@@ -1,0 +1,31 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+#app {
+  height: 100%;
+}
+
+/* element plus dark menu */
+.el-menu {
+  border-right: none !important;
+  background-color: #304156 !important;
+}
+
+.el-menu-item {
+  color: #bfcbd9 !important;
+}
+
+.el-menu-item:hover {
+  color: #fff !important;
+  background-color: #263445 !important;
+}
+
+.el-menu-item.is-active {
+  color: #409eff !important;
+  background-color: #263445 !important;
+} 
