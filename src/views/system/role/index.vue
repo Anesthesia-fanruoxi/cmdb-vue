@@ -1,57 +1,81 @@
 <template>
-  <div class="role-manage">
-    <div class="header">
-      <h2 class="title">角色管理</h2>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">
-        新增角色
-      </el-button>
+  <div class="app-container">
+    <!-- 头部标题和搜索区域 -->
+    <div class="header-container">
+      <h2 class="page-title">角色管理</h2>
+      <div class="search-area">
+        <el-input
+          v-model="queryParams.keyword"
+          placeholder="请输入角色名称"
+          clearable
+          :prefix-icon="Search"
+          @keyup.enter="handleQuery"
+          style="width: 240px"
+        />
+        <el-button type="primary" :icon="Search" @click="handleQuery">
+          搜索
+        </el-button>
+        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+      </div>
     </div>
 
-    <el-card class="content-card">
-      <!-- 搜索栏 -->
-      <div class="search-bar">
-        <div class="search-wrapper">
-          <el-form :inline="true" :model="queryParams" class="search-form">
-            <el-form-item>
-              <el-input
-                v-model="queryParams.keyword"
-                placeholder="请输入角色名称"
-                clearable
-                :prefix-icon="Search"
-                size="default"
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" size="default" @click="handleQuery">
-                搜索
-              </el-button>
-              <el-button size="default" @click="resetQuery">
-                重置
-              </el-button>
-            </el-form-item>
-          </el-form>
+    <!-- 表格区域 -->
+    <el-card class="table-wrapper">
+      <template #header>
+        <div class="card-header">
+          <el-button type="primary" :icon="Plus" @click="handleAdd">
+            新增角色
+          </el-button>
+          <el-button :icon="Refresh" circle @click="getList" />
         </div>
-      </div>
+      </template>
 
-      <!-- 表格 -->
       <el-table
         v-loading="loading"
-        :data="filteredRoleList"
+        :data="roleList"
         border
         stripe
-        highlight-current-row
+        style="width: 100%"
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="name" label="角色名称" min-width="15%" />
-        <el-table-column prop="code" label="角色编码" min-width="15%" />
-        <el-table-column prop="description" label="角色描述" min-width="30%" show-overflow-tooltip />
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column prop="name" label="角色名称" min-width="120" />
+        <el-table-column prop="code" label="角色编码" min-width="120" />
+        <el-table-column
+          prop="description"
+          label="描述"
+          min-width="180"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="created_at"
+          label="创建时间"
+          min-width="160"
+          show-overflow-tooltip
+        />
+        <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link :icon="Edit" @click="handleEdit(row)">
+            <el-button
+              link
+              type="primary"
+              :icon="Edit"
+              @click="handleEdit(row)"
+            >
               编辑
             </el-button>
-            <el-button type="danger" link :icon="Delete" @click="handleDelete(row)">
+            <el-button
+              link
+              type="primary"
+              :icon="Setting"
+              @click="handlePermission(row)"
+            >
+              权限配置
+            </el-button>
+            <el-button
+              link
+              type="danger"
+              :icon="Delete"
+              @click="handleDelete(row)"
+            >
               删除
             </el-button>
           </template>
@@ -59,39 +83,42 @@
       </el-table>
     </el-card>
 
-    <!-- 角色表单弹窗 -->
+    <!-- 添加/编辑角色对话框 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogType === 'create' ? '新增角色' : '编辑角色'"
+      :title="dialog.title"
+      v-model="dialog.visible"
       width="500px"
-      :close-on-click-modal="false"
-      destroy-on-close
+      @close="resetForm"
     >
       <el-form
-        ref="formRef"
-        :model="formData"
+        ref="roleFormRef"
+        :model="roleForm"
         :rules="rules"
         label-width="80px"
       >
         <el-form-item label="角色名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入角色名称" />
+          <el-input v-model="roleForm.name" placeholder="请输入角色名称" />
         </el-form-item>
-        <el-form-item label="角色编码" prop="code" v-if="dialogType === 'create'">
-          <el-input v-model="formData.code" placeholder="请输入角色编码" />
+        <el-form-item
+          label="角色编码"
+          prop="code"
+          v-if="dialog.type === 'create'"
+        >
+          <el-input v-model="roleForm.code" placeholder="请输入角色编码" />
         </el-form-item>
-        <el-form-item label="角色描述" prop="description">
+        <el-form-item label="描述" prop="description">
           <el-input
-            v-model="formData.description"
+            v-model="roleForm.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入角色描述"
+            placeholder="请输入描述"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
-          确定
+        <el-button @click="dialog.visible = false">取 消</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="submitForm">
+          确 定
         </el-button>
       </template>
     </el-dialog>
@@ -99,194 +126,221 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance } from 'element-plus'
-import { getRoleList, createRole, updateRole, deleteRole } from '@/api/role'
-import type { Role } from '@/api/role'
+import { ref, reactive, onMounted } from "vue";
+import {
+  Plus,
+  Edit,
+  Delete,
+  Search,
+  Refresh,
+  Setting,
+} from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import type { FormInstance } from "element-plus";
+import { getRoleList, createRole, updateRole, deleteRole } from "@/api/role";
+import type { Role } from "@/types";
 
 // 查询参数
 const queryParams = reactive({
-  keyword: ''
-})
+  keyword: "",
+});
 
-// 数据相关
-const loading = ref(false)
-const roleList = ref<Role[]>([])
+// 加载状态
+const loading = ref(false);
+const submitLoading = ref(false);
 
-// 过滤后的角色列表
-const filteredRoleList = computed(() => {
-  if (!queryParams.keyword) {
-    return roleList.value
-  }
-  const keyword = queryParams.keyword.toLowerCase()
-  return roleList.value.filter(role => 
-    role.name.toLowerCase().includes(keyword) || 
-    role.code.toLowerCase().includes(keyword) ||
-    role.description.toLowerCase().includes(keyword)
-  )
-})
+// 角色列表
+const roleList = ref<Role[]>([]);
+const total = ref(0);
 
-// 获取角色列表
-const getList = async () => {
-  try {
-    loading.value = true
-    const res = await getRoleList()
-    if (res.data?.list) {
-      roleList.value = res.data.list
-    }
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取角色列表失败')
-  } finally {
-    loading.value = false
-  }
-}
+// 对话框状态
+const dialog = reactive({
+  title: "",
+  visible: false,
+  type: "create", // 'create' | 'edit'
+});
 
-// 搜索
-const handleQuery = () => {
-  // 前端搜索，不需要重新请求
-}
-
-// 重置
-const resetQuery = () => {
-  queryParams.keyword = ''
-}
-
-// 弹窗相关
-const dialogVisible = ref(false)
-const dialogType = ref<'create' | 'edit'>('create')
-const formRef = ref<FormInstance>()
-const submitLoading = ref(false)
-
-// 表单数据
-const formData = reactive({
-  id: 0,
-  name: '',
-  code: '',
-  description: ''
-})
+// 表单对象
+const roleFormRef = ref<FormInstance>();
+const roleForm = reactive({
+  id: undefined as number | undefined,
+  name: "",
+  code: "",
+  description: "",
+});
 
 // 表单校验规则
 const rules = {
-  name: [
-    { required: true, message: '请输入角色名称', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-  ],
-  code: [
-    { required: true, message: '请输入角色编码', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9_]+$/, message: '只能包含字母、数字和下划线', trigger: 'blur' }
-  ]
-}
+  name: [{ required: true, message: "请输入角色名称", trigger: "blur" }],
+  code: [{ required: true, message: "请输入角色编码", trigger: "blur" }],
+};
 
-// 新增角色
+// 查询角色列表
+const getList = async () => {
+  try {
+    loading.value = true;
+    const res = await getRoleList(queryParams);
+    if (res.code === 200) {
+      roleList.value = res.data.list;
+      total.value = res.data.total;
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || "获取角色列表失败");
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 查询按钮
+const handleQuery = () => {
+  getList();
+};
+
+// 重置按钮
+const resetQuery = () => {
+  queryParams.keyword = "";
+  handleQuery();
+};
+
+// 新增按钮
 const handleAdd = () => {
-  dialogType.value = 'create'
-  dialogVisible.value = true
-  formData.id = 0
-  formData.name = ''
-  formData.code = ''
-  formData.description = ''
-}
+  dialog.type = "create";
+  dialog.title = "新增角色";
+  dialog.visible = true;
+};
 
-// 编辑角色
+// 编辑按钮
 const handleEdit = (row: Role) => {
-  dialogType.value = 'edit'
-  dialogVisible.value = true
-  Object.assign(formData, row)
-}
+  dialog.type = "edit";
+  dialog.title = "编辑角色";
+  dialog.visible = true;
+  Object.assign(roleForm, row);
+};
 
-// 删除角色
+// 删除按钮
 const handleDelete = async (row: Role) => {
   try {
-    await ElMessageBox.confirm('确定要删除该角色吗？', '提示', {
-      type: 'warning',
-      confirmButtonText: '确定',
-      cancelButtonText: '取消'
-    })
-    
-    const res = await deleteRole(row.id)
+    await ElMessageBox.confirm("确认要删除该角色吗？", "警告", {
+      type: "warning",
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+    });
+
+    const res = await deleteRole(row.id);
     if (res.code === 200) {
-      ElMessage.success('删除成功')
-      getList()
+      ElMessage.success("删除成功");
+      getList();
     }
   } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
+    if (error !== "cancel") {
+      ElMessage.error(error.message || "删除失败");
     }
   }
-}
+};
+
+// 重置表单
+const resetForm = () => {
+  roleForm.id = undefined;
+  roleForm.name = "";
+  roleForm.code = "";
+  roleForm.description = "";
+  roleFormRef.value?.resetFields();
+};
 
 // 提交表单
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  
+const submitForm = async () => {
+  if (!roleFormRef.value) return;
+
   try {
-    await formRef.value.validate()
-    submitLoading.value = true
-    
-    if (dialogType.value === 'create') {
-      const res = await createRole(formData)
+    await roleFormRef.value.validate();
+
+    if (dialog.type === "create") {
+      const res = await createRole({
+        name: roleForm.name,
+        code: roleForm.code,
+        description: roleForm.description,
+      });
       if (res.code === 200) {
-        ElMessage.success('创建成功')
-        dialogVisible.value = false
-        getList()
+        ElMessage.success("创建成功");
+        dialog.visible = false;
+        getList();
       }
     } else {
-      const res = await updateRole(formData)
+      const res = await updateRole({
+        id: roleForm.id!,
+        name: roleForm.name,
+        code: roleForm.code,
+        description: roleForm.description,
+      });
       if (res.code === 200) {
-        ElMessage.success('更新成功')
-        dialogVisible.value = false
-        getList()
+        ElMessage.success("更新成功");
+        dialog.visible = false;
+        getList();
       }
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '提交失败')
-  } finally {
-    submitLoading.value = false
+    ElMessage.error(error.message || "保存失败");
   }
-}
+};
+
+// 权限配置按钮
+const handlePermission = (row: Role) => {
+  // TODO: 实现权限配置功能
+  console.log("配置权限:", row);
+};
 
 // 初始化
 onMounted(() => {
-  getList()
-})
+  getList();
+});
 </script>
 
-<style scoped>
-.role-manage {
+<style lang="scss" scoped>
+.app-container {
+  padding: 20px;
+
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    .page-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 0;
+      color: #303133;
+    }
+
+    .search-area {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+  }
+
+  .table-wrapper {
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+}
+
+:deep(.el-card__header) {
+  padding: 10px 20px;
+}
+
+:deep(.el-card__body) {
   padding: 20px;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
+.el-form-item {
+  margin-bottom: 18px;
 
-.title {
-  font-size: 20px;
-  font-weight: bold;
-  margin: 0;
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
-
-.content-card {
-  margin-bottom: 20px;
-}
-
-.search-bar {
-  margin-bottom: 20px;
-}
-
-.search-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.search-form {
-  display: flex;
-  align-items: center;
-}
-</style> 
+</style>
