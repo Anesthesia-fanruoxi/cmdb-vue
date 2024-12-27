@@ -2,9 +2,11 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2 class="login-title">CMDB 系统登录</h2>
+        <div class="card-header">
+          <span>系统登录</span>
+        </div>
       </template>
-
+      
       <el-form
         ref="formRef"
         :model="formData"
@@ -15,17 +17,17 @@
         <el-form-item prop="username">
           <el-input
             v-model="formData.username"
-            placeholder="请输入用户名"
-            :prefix-icon="User"
+            placeholder="用户名"
+            prefix-icon="User"
           />
         </el-form-item>
-
+        
         <el-form-item prop="password">
           <el-input
             v-model="formData.password"
             type="password"
-            placeholder="请输入密码"
-            :prefix-icon="Lock"
+            placeholder="密码"
+            prefix-icon="Lock"
             show-password
           />
         </el-form-item>
@@ -46,29 +48,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/modules/user'
+import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/store/modules/user'
 
 const router = useRouter()
+const formRef = ref<FormInstance>()
+const loading = ref(false)
 const userStore = useUserStore()
 
-const loginForm = ref({
+// 表单数据
+const formData = reactive({
   username: '',
   password: ''
 })
 
-const loading = ref(false)
+// 表单验证规则
+const rules = reactive<FormRules>({
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
+  ]
+})
 
+// 登录处理
 const handleLogin = async () => {
-  loading.value = true
+  if (!formRef.value) return
+  
   try {
-    await userStore.login(loginForm.value)
+    loading.value = true
+    await formRef.value.validate()
+    
+    // 调用 store 中的登录方法
+    await userStore.login({
+      username: formData.username,
+      password: formData.password
+    })
+    
     ElMessage.success('登录成功')
     router.push('/')
   } catch (error: any) {
-    ElMessage.error(error.message || '登录失败')
+    console.error('登录失败:', error)
+    ElMessage.error(error.message || '登录失败，请检查用户名和密码')
   } finally {
     loading.value = false
   }
@@ -77,37 +104,24 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-container {
-  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100vh;
   background-color: #f0f2f5;
 }
 
 .login-card {
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
 }
 
-.login-title {
-  margin: 0;
+.card-header {
   text-align: center;
-  font-size: 24px;
-  color: #1677ff;
+  font-size: 20px;
 }
 
 .login-button {
   width: 100%;
-}
-
-:deep(.el-input__wrapper) {
-  background-color: #fff;
-}
-
-:deep(.el-input__inner) {
-  height: 40px;
-}
-
-:deep(.el-button) {
-  height: 40px;
 }
 </style>

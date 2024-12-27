@@ -2,28 +2,35 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { ProjectDict, GitDict, ApiResponse } from '../types'
 import request from '../../../../../utils/request'
+import { getProjectDict } from '@/api/project-dict'
+import { getDepartmentProjects } from '@/api/department'
+import { useUserStore } from '@/store/modules/user'
 
-export const useProjectDict = () => {
-  const projectList = ref<ProjectDict[]>([])
-  const gitDict = ref<GitDict[]>([])
+export function useProjectDict() {
+  const projectList = ref<any[]>([])
+  const gitDict = ref<any[]>([])
 
   const fetchProjectDict = async () => {
     try {
       console.log('Fetching project dictionary...')
-      const response = await request({
-        url: '/system/dict/query',
-        method: 'get',
-        params: {
-          table_name: 'project_dict'
+      const userStore = useUserStore()
+      const deptId = userStore.userInfo.department?.id
+      
+      let projects: string[] = []
+      if (deptId) {
+        const projectRes = await getDepartmentProjects(deptId)
+        if (projectRes.code === 200) {
+          projects = projectRes.data
         }
-      })
-      console.log('Project Dict Response:', response)
-      if (response && Array.isArray(response.data)) {
-        projectList.value = response.data
+      }
+
+      const res = await getProjectDict(projects)
+      if (res.code === 200) {
+        projectList.value = res.data
         console.log('Project List:', projectList.value)
       }
     } catch (error) {
-      console.error('Fetch Project Dict Error:', error)
+      console.error('获取项目字典失败:', error)
       ElMessage.error('获取项目字典失败')
     }
   }

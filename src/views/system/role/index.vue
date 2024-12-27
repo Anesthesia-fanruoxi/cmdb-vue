@@ -122,11 +122,17 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 权限配置对话框 -->
+    <permission-dialog
+      v-model="permissionDialog.visible"
+      :role-id="permissionDialog.roleId"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, nextTick } from "vue";
 import {
   Plus,
   Edit,
@@ -137,8 +143,11 @@ import {
 } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance } from "element-plus";
-import { getRoleList, createRole, updateRole, deleteRole } from "@/api/role";
+import { getRoleList, createRole, updateRole, deleteRole, getAllPermissions, getRolePermissions, updateRolePermissions } from "@/api/role";
 import type { Role } from "@/types";
+import { useUserStore } from "@/store/modules/user";
+import router from "@/router";
+import PermissionDialog from './components/PermissionDialog.vue'
 
 // 查询参数
 const queryParams = reactive({
@@ -174,6 +183,12 @@ const rules = {
   name: [{ required: true, message: "请输入角色名称", trigger: "blur" }],
   code: [{ required: true, message: "请输入角色编码", trigger: "blur" }],
 };
+
+// 权限配置对话框状态
+const permissionDialog = reactive({
+  visible: false,
+  roleId: undefined as number | undefined
+});
 
 // 查询角色列表
 const getList = async () => {
@@ -285,9 +300,9 @@ const submitForm = async () => {
 
 // 权限配置按钮
 const handlePermission = (row: Role) => {
-  // TODO: 实现权限配置功能
-  console.log("配置权限:", row);
-};
+  permissionDialog.roleId = row.id
+  permissionDialog.visible = true
+}
 
 // 初始化
 onMounted(() => {

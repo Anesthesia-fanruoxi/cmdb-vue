@@ -24,3 +24,23 @@ export function getProjectDictList(params: ProjectDictQueryParams) {
     params
   })
 }
+
+// 获取项目字典
+export function getProjectDict(projects?: string[]) {
+  return request<{
+    code: number
+    data: Array<{
+      id: number
+      project: string
+      project_name: string
+      department_id?: number
+    }>
+  }>({
+    url: '/system/dict/query',
+    method: 'get',
+    params: {
+      table_name: 'project_dict',
+      projects: projects?.join(',')
+    }
+  })
+}

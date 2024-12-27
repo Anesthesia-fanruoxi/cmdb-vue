@@ -47,6 +47,8 @@ import ProjectFilter from './components/ProjectFilter.vue'
 import StatusCards from './components/StatusCards.vue'
 import StatusTable from './components/StatusTable.vue'
 import IterationDialog from './components/IterationDialog.vue'
+import { getDepartmentProjects } from '@/api/department'
+import { useUserStore } from '@/store/modules/user'
 
 const {
   statusData,
@@ -64,7 +66,28 @@ const iterationDialogRef = ref()
 
 // 刷新按钮点击事件
 const handleRefresh = async () => {
-  await refreshStatus(projectList.value)
+  try {
+    loading.value = true
+    // 获取当前用户的部门ID
+    const userStore = useUserStore()
+    const deptId = userStore.userInfo.department?.id
+    
+    // 获取部门的项目列表
+    let projects: string[] = []
+    if (deptId) {
+      const projectRes = await getDepartmentProjects(deptId)
+      if (projectRes.code === 200) {
+        projects = projectRes.data
+      }
+    }
+    
+    // 调用刷新接口时带上项目列表
+    await refreshStatus(projectList.value, projects)
+  } catch (error: any) {
+    ElMessage.error(error.message || '刷新失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 // 处理迭代
@@ -100,6 +123,39 @@ watch(
     filterStatusData(projectList.value)
   }
 )
+
+const getList = async () => {
+  try {
+    loading.value = true
+    // 获取当前用户的部门ID
+    const userStore = useUserStore()
+    const deptId = userStore.userInfo.department?.id
+    
+    // 获取部门的项目列表
+    let projects: string[] = []
+    if (deptId) {
+      const projectRes = await getDepartmentProjects(deptId)
+      if (projectRes.code === 200) {
+        projects = projectRes.data
+      }
+    }
+    
+    // 调用列表接口时带上项目列表
+    const res = await getEnvironmentList({
+      projects,
+      ...queryParams
+    })
+    
+    if (res.code === 200) {
+      tableData.value = res.data.list
+      total.value = res.data.total
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <style scoped>

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { getToken } from '@/utils/auth'
 
 const service = axios.create({
   baseURL: 'http://localhost:3000/api'
@@ -8,14 +9,9 @@ const service = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
-      // 确保 headers 对象存在
-      config.headers = config.headers || {}
-      // 设置 Authorization 头
-      config.headers.Authorization = `Bearer ${token}`
-      // 设置 token 头
-      config.headers.token = token
+      config.headers['Authorization'] = `Bearer ${token}`
     }
     return config
   },

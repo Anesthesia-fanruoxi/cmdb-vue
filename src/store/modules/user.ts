@@ -18,6 +18,7 @@ interface UserState {
       id: number;
       name: string;
       code: string;
+      permissions?: any[];
     };
     department?: {
       id: number;
@@ -41,16 +42,20 @@ export const useUserStore = defineStore("user", {
       try {
         const res = await login(params);
         if (res.code === 200) {
+          // 1. 保存 token
           const token = res.data.token;
           this.token = token;
           setToken(token);
 
-          // 先获取用户信息
+          // 2. 获取用户信息（包含角色和权限）
           await this.getInfo();
 
-          // 获取并生成动态路由
+          // 3. 生成动态路由
           const permissionStore = usePermissionStore();
           await permissionStore.generateRoutes();
+
+          // 设置路由已加载标志
+          this.isRoutesLoaded = true;
 
           return true;
         }
@@ -85,6 +90,12 @@ export const useUserStore = defineStore("user", {
         this.userInfo = {};
         this.isRoutesLoaded = false;
         clearAuth();
+        // 重置路由
+        router.getRoutes().forEach(route => {
+          if (route.name && route.name !== 'Login') {
+            router.removeRoute(route.name)
+          }
+        });
         return true;
       } catch (error) {
         this.token = null;
@@ -104,6 +115,34 @@ export const useUserStore = defineStore("user", {
 
     setRoutesLoaded(status: boolean) {
       this.isRoutesLoaded = status;
+    },
+
+    // 重置路由
+    async resetRoutes() {
+      // 清除所有动态添加的路由
+      router.getRoutes().forEach(route => {
+        if (route.name && route.name !== 'Login') {
+          router.removeRoute(route.name)
+        }
+      })
+      
+      // 重置路由加载状态
+      this.isRoutesLoaded = false
+      
+      // 重新生成路由
+      const permissionStore = usePermissionStore()
+      const accessRoutes = await permissionStore.generateRoutes()
+      accessRoutes.forEach(route => {
+        router.addRoute(route)
+      })
+      
+      // 添加 404 路由
+      router.addRoute({
+        path: '/:pathMatch(.*)*',
+        redirect: '/dashboard'
+      })
+      
+      this.isRoutesLoaded = true
     },
   },
 });

@@ -48,27 +48,92 @@ export function getDepartmentList() {
 
 // 创建部门
 export function createDepartment(data: CreateDepartmentParams) {
-  return request<null>({
+  return request<{
+    code: number
+    data: null
+  }>({
     url: '/system/dept/create',
     method: 'post',
-    data
+    data: {
+      name: data.name,
+      code: data.code,
+      description: data.description || '',
+      parent_id: data.parent_id === undefined ? null : data.parent_id,
+      sort: data.sort || 0
+    }
   })
 }
 
 // 更新部门
 export function updateDepartment(data: UpdateDepartmentParams) {
-  return request<null>({
-    url: '/api/department/update',
+  return request<{
+    code: number
+    data: null
+  }>({
+    url: '/system/dept/update',
     method: 'post',
-    data
+    data: {
+      id: data.id,
+      name: data.name,
+      code: data.code,
+      description: data.description || '',
+      parent_id: data.parent_id === undefined ? null : data.parent_id,
+      sort: data.sort || 0
+    }
   })
 }
 
 // 删除部门
 export function deleteDepartment(id: number) {
   return request<null>({
-    url: '/api/department/delete',
+    url: '/system/dept/delete',
     method: 'post',
     data: { id }
+  })
+}
+
+// 获取项目字典
+export function getProjectDict() {
+  return request<{
+    code: number
+    data: Array<{
+      id: number
+      project: string
+      project_name: string
+      department_id?: number
+    }>
+  }>({
+    url: '/system/dict/query',
+    method: 'get',
+    params: {
+      table_name: 'project_dict'
+    }
+  })
+}
+
+// 获取部门项目配置
+export function getDepartmentProjects(deptId: number) {
+  return request<{
+    code: number
+    data: string[]  // 项目编码列表
+  }>({
+    url: '/system/dept/project',
+    method: 'get',
+    params: { dept_id: deptId }
+  })
+}
+
+// 更新部门项目关联
+export function updateDepartmentProjects(deptId: number, projectCodes: string[]) {
+  return request<{
+    code: number
+    data: null
+  }>({
+    url: '/system/dept/project/update',
+    method: 'post',
+    data: { 
+      id: deptId, 
+      projects: projectCodes 
+    }
   })
 } 

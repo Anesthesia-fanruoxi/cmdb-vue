@@ -1,10 +1,10 @@
 <template>
   <div class="app-wrapper">
     <div class="sidebar-container" :class="{ 'is-collapse': isCollapse }">
-      <Sidebar />
+      <Sidebar :is-collapse="isCollapse" />
     </div>
     <div class="main-container">
-      <Navbar />
+      <Navbar @toggle="handleToggleSidebar" />
       <AppMain />
     </div>
   </div>
@@ -15,6 +15,10 @@ import { ref } from "vue";
 import { Navbar, Sidebar, AppMain } from "./components";
 
 const isCollapse = ref(false);
+
+const handleToggleSidebar = (collapse: boolean) => {
+  isCollapse.value = collapse;
+};
 </script>
 
 <style lang="scss" scoped>

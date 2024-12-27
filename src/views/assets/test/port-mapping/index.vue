@@ -197,6 +197,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { getDepartmentProjects } from '@/api/department'
+import { useUserStore } from '@/store/modules/user'
 
 interface Project {
   project: string
@@ -238,37 +240,40 @@ const filterForm = reactive({
   serviceName: ''
 })
 
-// 获取项目列表
-const fetchProjectList = async () => {
-  try {
-    loading.value = true
-    const res = await request({
-      url: '/system/dict/query',
-      method: 'get',
-      params: {
-        table_name: 'project_dict'
-      }
-    })
-    if (res.data && Array.isArray(res.data)) {
-      projectList.value = res.data
-    }
-  } catch (error) {
-    console.error('获取项目列表失败:', error)
-    ElMessage.error('获取项目列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
 // 获取所有端口映射数据
 const fetchAllPortMappings = async () => {
   try {
     loading.value = true
+    // 获取当前用户的部门ID
+    const userStore = useUserStore()
+    const deptId = userStore.userInfo.department?.id
+    
+    // 获取部门的项目列表
+    let projects: string[] = []
+    if (deptId) {
+      const projectRes = await getDepartmentProjects(deptId)
+      if (projectRes.code === 200) {
+        projects = projectRes.data
+      }
+    }
+
     const res = await request({
       url: '/asset/test/cluster/service',
-      method: 'get'
+      method: 'get',
+      params: {
+        projects: projects.join(',')
+      }
     })
     allData.value = res.data
+    // 从返回数据中提取项目列表
+    const uniqueProjects = new Set(allData.value.map(item => item.project))
+    projectList.value = Array.from(uniqueProjects).map(project => {
+      const item = allData.value.find(d => d.project === project)
+      return {
+        project,
+        project_name: item?.project_name || project
+      }
+    })
   } catch (error) {
     console.error('获取端口映射数据失败:', error)
     ElMessage.error('获取端口映射数据失败')
@@ -351,9 +356,9 @@ const handleNamespaceChange = () => {
       const ports = item.ports || []
       return {
         ...item,
-        debug_port: ports.find(p => p.target_port === 5000)?.node_port,
-        service_port: ports.find(p => p.target_port === 8080)?.node_port,
-        jvm_port: ports.find(p => p.target_port === 8081)?.node_port
+        debug_port: ports.find(p => p.port === 5000)?.node_port,
+        service_port: ports.find(p => p.port === 8080)?.node_port,
+        jvm_port: ports.find(p => p.port === 8081)?.node_port
       }
     })
   }
@@ -367,70 +372,61 @@ const handleNamespaceChange = () => {
   tableData.value = filteredData
 }
 
+// 重置表单
 const resetForm = () => {
   filterForm.project = 'all'
   filterForm.type = ''
   filterForm.namespace = ''
   filterForm.serviceName = ''
   namespaceList.value = []
-  fetchAllPortMappings()
+  tableData.value = []
 }
 
+// 处理刷新
 const handleRefresh = () => {
   fetchAllPortMappings()
-  ElMessage.success('刷新成功')
 }
 
+// 处理导出
 const handleExport = () => {
-  ElMessage.success('导出成功')
-}
-
-// 复制端口地址
-const copyPortAddress = (port: number) => {
-  if (!port) return
-  const address = `192.168.3.10:${port}`
-  navigator.clipboard.writeText(address).then(() => {
-    ElMessage.success(`已复制: ${address}`)
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
-}
-
-// 复制文本
-const copyText = (text: string) => {
-  if (!text || text === '-') return
-  navigator.clipboard.writeText(text).then(() => {
-    ElMessage.success(`已复制: ${text}`)
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  // TODO: 实现导出功能
+  ElMessage.info('导出功能开发中')
 }
 
 // 获取中间件用户名
 const getMiddlewareUsername = (serviceName: string) => {
-  const lowerName = serviceName.toLowerCase()
-  if (lowerName.includes('mysql')) return 'root'
-  if (lowerName.includes('redis')) return '-'
-  if (lowerName.includes('rabbitmq')) return 'root'
-  if (lowerName.includes('kafka')) return '-'
-  if (lowerName.includes('nacos')) return 'nacos'
-  if (lowerName.includes('xxl-job') || lowerName.includes('xxljob')) return 'root'
-  if (lowerName.includes('mongodb')) return 'admin'
-  return '-'
+  switch (serviceName) {
+    case 'nacos':
+      return 'nacos'
+    case 'rabbitmq-server':
+      return 'admin'
+    default:
+      return '-'
+  }
 }
 
 // 获取中间件密码
 const getMiddlewarePassword = (serviceName: string) => {
-  const lowerName = serviceName.toLowerCase()
-  if (lowerName.includes('mysql-nacos')) return 'root'
-  if (lowerName.includes('mysql')) return 'SgQHvsy9M7LWKBCz'
-  if (lowerName.includes('redis')) return '123456'
-  if (lowerName.includes('rabbitmq')) return '123456'
-  if (lowerName.includes('kafka')) return '-'
-  if (lowerName.includes('nacos')) return 'nacos'
-  if (lowerName.includes('xxl-job') || lowerName.includes('xxljob')) return '123456'
-  if (lowerName.includes('mongodb')) return '123456'
-  return '-'
+  switch (serviceName) {
+    case 'nacos':
+      return 'nacos'
+    case 'rabbitmq-server':
+      return 'admin123'
+    default:
+      return ''
+  }
+}
+
+// 复制文本
+const copyText = (text: string) => {
+  navigator.clipboard.writeText(text)
+    .then(() => ElMessage.success('复制成功'))
+    .catch(() => ElMessage.error('复制失败'))
+}
+
+// 复制端口地址
+const copyPortAddress = (port: number) => {
+  copyText(`192.168.3.10:${port}`)
 }
 
 // 处理用户名点击
@@ -446,7 +442,7 @@ const handleUsernameClick = (serviceName: string) => {
 // 处理密码点击
 const handlePasswordClick = (serviceName: string) => {
   const password = getMiddlewarePassword(serviceName)
-  if (password === '-') {
+  if (!password) {
     ElMessage.info('无需复制')
     return
   }
@@ -463,7 +459,6 @@ const handlePortClick = (port: number | undefined) => {
 }
 
 onMounted(() => {
-  fetchProjectList()
   fetchAllPortMappings()
 })
 </script>

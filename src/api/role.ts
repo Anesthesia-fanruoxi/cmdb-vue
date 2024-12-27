@@ -24,7 +24,7 @@ export function createRole(data: {
   code: string;
   description?: string;
 }) {
-  return request.post<ApiResponse<Role>>("/system/role", data);
+  return request.post<ApiResponse<Role>>("/system/role/create", data);
 }
 
 // 更新角色
@@ -43,25 +43,30 @@ export function deleteRole(id: number) {
 }
 
 // 获取角色权限
-export function getRolePermissions(roleId: number) {
-  return request.get<
-    ApiResponse<{
-      menuIds: number[];
-      permissions: string[];
-    }>
-  >(`/system/role/${roleId}/permissions`);
+export function getRolePermissions(id: number) {
+  return request({
+    url: '/system/role/menus',
+    method: 'get',
+    params: { id }
+  });
 }
 
 // 更新角色权限
-export function updateRolePermissions(
-  roleId: number,
-  data: {
-    menuIds: number[];
-    permissions: string[];
-  }
-) {
-  return request.put<ApiResponse<null>>(
-    `/system/role/${roleId}/permissions`,
-    data
-  );
+export function updateRolePermissions(id: number, menuIds: number[]) {
+  return request<{
+    code: number
+    data: null
+  }>({
+    url: `/system/role/menus/update`,
+    method: 'post',
+    data: { id: id, menu_ids: menuIds }
+  })
+}
+
+// 获取菜单树
+export function getAllPermissions() {
+  return request({
+    url: '/system/menu/tree',
+    method: 'get'
+  });
 }

@@ -2,6 +2,8 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { ClusterStatus, ApiResponse, ProjectDict } from '../types'
 import request from '../../../../../utils/request'
+import { getDepartmentProjects } from '@/api/department'
+import { useUserStore } from '@/store/modules/user'
 
 export const useClusterStatus = () => {
   const allStatusData = ref<ClusterStatus[]>([])
@@ -33,13 +35,32 @@ export const useClusterStatus = () => {
   }
 
   // 刷新状态
-  const handleRefresh = async (projectList: ProjectDict[]) => {
+  const handleRefresh = async (projectList: any[]) => {
     try {
-      const response = await request.get<ClusterStatus[]>('/asset/test/cluster/status')
-      console.log('API Response:', response)
-      if (response && Array.isArray(response.data)) {
+      // 获取当前用户的部门ID
+      const userStore = useUserStore()
+      const deptId = userStore.userInfo.department?.id
+      
+      // 获取部门的项目列表
+      let projects: string[] = []
+      if (deptId) {
+        const projectRes = await getDepartmentProjects(deptId)
+        if (projectRes.code === 200) {
+          projects = projectRes.data
+        }
+      }
+
+      const res = await request({
+        url: '/asset/test/cluster/status',
+        method: 'get',
+        params: {
+          projects: projects.join(',')
+        }
+      })
+      console.log('API Response:', res)
+      if (res && Array.isArray(res.data)) {
         // 处理数据，添加必要的字段
-        const processedData = response.data.map(item => ({
+        const processedData = res.data.map(item => ({
           ...item,
           project_name: item.project_name || '', // 确保有 project_name 字段
           release_user_name: item.release_user_name || '',
@@ -60,7 +81,7 @@ export const useClusterStatus = () => {
         ElMessage.success('刷新成功')
       }
     } catch (error) {
-      console.error('Refresh Error:', error)
+      console.error('获取状态数据失败:', error)
       ElMessage.error('刷新状态失败')
     }
   }
@@ -104,7 +125,7 @@ export const useClusterStatus = () => {
         statusData.value = [...statusData.value]
       }
     } catch (error) {
-      console.error('修改状态失败:', error)
+      console.error('修改���态失败:', error)
       ElMessage.error('修改状态失败')
     } finally {
       row.loading = false

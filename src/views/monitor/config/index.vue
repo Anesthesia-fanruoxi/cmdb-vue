@@ -377,7 +377,7 @@ const handleToggleMonitor = (row: any) => {
 }
 
 const handleDeleteMonitor = (row: any) => {
-  // TODO: 实现删除监��项
+  // TODO: 实现删除监控项
 }
 
 // 告警规则相关操作

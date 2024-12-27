@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { getUserMenus } from "@/api/menu";
 import { RouteRecordRaw } from "vue-router";
 import { constantRoutes } from "@/router";
+import { useUserStore } from "@/store/modules/user";
 
 interface MenuItem {
   id: number;
@@ -19,36 +20,6 @@ interface MenuItem {
   updated_at?: string;
 }
 
-// 添加图标映射
-const iconMap: Record<string, string> = {
-  // 资产管理相关
-  Asset: "Folder", // 资产管理
-  Cloud: "Cloud", // 线上资产
-  Database: "Grid", // 数据库
-  Network: "Connection", // 网络
-  Server: "Monitor", // 服务器
-  Test: "Box", // 测试资产
-  Preview: "View", // 环境预览
-  Port: "Position", // 端口映射
-
-  // 监控中心相关
-  Monitor: "Odometer", // 监控管理
-  Dashboard: "DataBoard", // 监控总览
-  Alarm: "Bell", // 告警管理
-
-  // 知识库相关
-  Document: "Document", // 知识库
-  Wiki: "Reading", // Wiki
-
-  // 系统管理相关
-  Setting: "Setting", // 系统管理
-  User: "User", // 用户管理
-  Role: "Avatar", // 角色管理
-  Dept: "OfficeBuilding", // 部门管理
-  Menu: "Menu", // 菜单管理
-  Dict: "List", // 字典管理
-};
-
 export const usePermissionStore = defineStore("permission", {
   state: () => ({
     routes: [...constantRoutes] as RouteRecordRaw[],
@@ -63,6 +34,26 @@ export const usePermissionStore = defineStore("permission", {
   },
 
   actions: {
+    // 过滤菜单
+    filterMenus(menus: MenuItem[]): MenuItem[] {
+      return menus
+        .filter((menu) => {
+          // 只过滤掉不可见或未启用的菜单
+          if (!menu.is_visible || !menu.is_enabled) {
+            return false;
+          }
+          // 删除监控配置的过滤
+          // if (menu.path === "/monitor/config") {
+          //   return false;
+          // }
+          return true;
+        })
+        .map((menu) => ({
+          ...menu,
+          children: menu.children ? this.filterMenus(menu.children) : undefined,
+        }));
+    },
+
     // 生成路由
     async generateRoutes() {
       try {
@@ -75,11 +66,9 @@ export const usePermissionStore = defineStore("permission", {
                 menu.children = [];
               }
               // 检查是否已经存在 Wiki 菜单
-              if (
-                !menu.children.some((child) => child.path === "/knowledge/wiki")
-              ) {
+              if (!menu.children.some((child) => child.path === "/knowledge/wiki")) {
                 menu.children.push({
-                  id: 999, // 临时 ID
+                  id: 999,
                   name: "Wiki",
                   path: "/knowledge/wiki",
                   component: "knowledge/wiki/index",
@@ -108,26 +97,6 @@ export const usePermissionStore = defineStore("permission", {
       }
     },
 
-    // 过滤菜单
-    filterMenus(menus: MenuItem[]): MenuItem[] {
-      return menus
-        .filter((menu) => {
-          // 过滤掉不可见或未启用的菜单
-          if (!menu.is_visible || !menu.is_enabled) {
-            return false;
-          }
-          // 过滤掉监控配置
-          if (menu.path === "/monitor/config") {
-            return false;
-          }
-          return true;
-        })
-        .map((menu) => ({
-          ...menu,
-          children: menu.children ? this.filterMenus(menu.children) : undefined,
-        }));
-    },
-
     // 格式化路由
     formatRoutes(menus: MenuItem[]): RouteRecordRaw[] {
       return menus.map((menu) => {
@@ -136,8 +105,7 @@ export const usePermissionStore = defineStore("permission", {
           name: menu.permission,
           meta: {
             title: menu.name,
-            // 使用映射转换图标名称
-            icon: iconMap[menu.icon] || menu.icon || "Document",
+            icon: menu.icon || 'Document',
             permission: menu.permission,
           },
           component:

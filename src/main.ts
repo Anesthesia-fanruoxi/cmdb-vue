@@ -8,7 +8,10 @@ import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 
 const app = createApp(App);
 
-// 全局注册 Element Plus 图标
+// 添加调试日志
+console.log('Registering icons:', Object.keys(ElementPlusIconsVue));
+
+// 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component);
 }
