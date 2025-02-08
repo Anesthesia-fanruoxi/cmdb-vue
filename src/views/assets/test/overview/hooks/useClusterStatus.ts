@@ -4,6 +4,7 @@ import type { ClusterStatus, ApiResponse, ProjectDict } from '../types'
 import request from '../../../../../utils/request'
 import { getDepartmentProjects } from '@/api/department'
 import { useUserStore } from '@/store/modules/user'
+import { getClusterStatus, scaleCluster, batchScaleCluster } from '@/api/cluster'
 
 export const useClusterStatus = () => {
   const allStatusData = ref<ClusterStatus[]>([])
@@ -50,13 +51,7 @@ export const useClusterStatus = () => {
         }
       }
 
-      const res = await request({
-        url: '/asset/test/cluster/status',
-        method: 'get',
-        params: {
-          projects: projects.join(',')
-        }
-      })
+      const res = await getClusterStatus({ projects })
       console.log('API Response:', res)
       if (res && Array.isArray(res.data)) {
         // 处理数据，添加必要的字段
@@ -112,10 +107,10 @@ export const useClusterStatus = () => {
   const handleStatusChange = async (val: boolean, row: ClusterStatus) => {
     row.loading = true
     try {
-      const response = await request.post<any>('/asset/test/cluster/scale', {
-        namespace: row.namespace,
-        action: val ? 'scale_up' : 'scale_down'
-      })
+      const response = await scaleCluster(
+        row.namespace, 
+        val ? 'scale_up' : 'scale_down'
+      )
       if (response.data.code === 200) {
         ElMessage.success(`${val ? '启动' : '停止'}成功`)
         row.has_pods = val
@@ -125,7 +120,7 @@ export const useClusterStatus = () => {
         statusData.value = [...statusData.value]
       }
     } catch (error) {
-      console.error('修改���态失败:', error)
+      console.error('修改状态失败:', error)
       ElMessage.error('修改状态失败')
     } finally {
       row.loading = false
@@ -149,11 +144,10 @@ export const useClusterStatus = () => {
 
       batchLoading.value = true
       
-      // 使用批量操作接口
-      const response = await request.post<any>('/cluster/scale/batch', {
-        namespaces: needOperateRows.map(row => row.namespace),
+      const response = await batchScaleCluster(
+        needOperateRows.map(row => row.namespace),
         action
-      })
+      )
 
       if (response.data.code === 200) {
         ElMessage.success(`批量${action === 'scale_up' ? '启动' : '停止'}操作已提交`)

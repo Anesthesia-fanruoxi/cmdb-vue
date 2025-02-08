@@ -1,28 +1,31 @@
 import request from '@/utils/request'
 
+// 通用的项目参数接口
+interface ProjectParams {
+  projects: string[]
+}
+
 // 获取集群状态
-export const getClusterStatus = () => {
+export function getClusterStatus(params: ProjectParams) {
   return request({
     url: '/asset/test/cluster/status',
-    method: 'get'
+    method: 'get',
   })
 }
 
-// 单个环境状态切换
-export const scaleCluster = (data: { namespace: string; action: 'scale_up' | 'scale_down' }) => {
-  return request({
-    url: '/asset/test/cluster/scale',
-    method: 'post',
-    data
+// 修改集群状态（扩缩容）
+export function scaleCluster(namespace: string, action: 'scale_up' | 'scale_down') {
+  return request.post<any>('/asset/test/cluster/scale', {
+    namespace,
+    action
   })
 }
 
-// 批量环境状态切换
-export const scaleBatchCluster = (data: { namespaces: string[]; action: 'scale_up' | 'scale_down' }) => {
-  return request({
-    url: '/asset/test/cluster/scale/batch',
-    method: 'post',
-    data
+// 批量修改集群状态
+export function batchScaleCluster(namespaces: string[], action: 'scale_up' | 'scale_down') {
+  return request.post<any>('/cluster/scale/batch', {
+    namespaces,
+    action
   })
 }
 
@@ -32,5 +35,13 @@ export const iterateCluster = (data: { namespace: string; branch: string; remark
     url: '/asset/test/cluster/iteration',
     method: 'post',
     data
+  })
+}
+
+// 获取集群服务端口映射
+export function getClusterServices(params: ProjectParams) {
+  return request({
+    url: '/asset/test/cluster/services',
+    method: 'get',
   })
 } 

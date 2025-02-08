@@ -199,6 +199,7 @@ import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { getDepartmentProjects } from '@/api/department'
 import { useUserStore } from '@/store/modules/user'
+import { getClusterServices } from '@/api/cluster'
 
 interface Project {
   project: string
@@ -257,13 +258,8 @@ const fetchAllPortMappings = async () => {
       }
     }
 
-    const res = await request({
-      url: '/asset/test/cluster/service',
-      method: 'get',
-      params: {
-        projects: projects.join(',')
-      }
-    })
+    // 使用新的API函数替换原有的请求
+    const res = await getClusterServices({ projects })
     allData.value = res.data
     // 从返回数据中提取项目列表
     const uniqueProjects = new Set(allData.value.map(item => item.project))

@@ -5,6 +5,18 @@ import { setToken, getToken, clearAuth } from "@/utils/auth";
 import { usePermissionStore } from "./permission";
 import router from "@/router";
 
+export interface UserInfo {
+  userId: number
+  deptId: number
+  username: string
+  nickname: string
+  email: string
+  phone: string
+  avatar: string
+  roles: string[]
+  perms: string[]
+}
+
 interface UserState {
   token: string | null;
   userInfo: {

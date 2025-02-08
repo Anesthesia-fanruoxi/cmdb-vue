@@ -40,4 +40,19 @@ export const createDictItem = (data: CreateDictItemParams) => {
 // 删除字典项
 export const deleteDictItem = (data: { table_name: string; key: string }) => {
   return request.post<ApiResponse<null>>('/system/dict/item/delete', data)
+}
+
+// 获取字典数据
+export const getDictData = (dictType: string) => {
+  return request({
+    url: `/system/dict/data/type/${dictType}`,
+    method: 'get'
+  })
+}
+
+// 字典数据接口
+export interface DictData {
+  dictLabel: string
+  dictValue: string
+  [key: string]: any
 } 
