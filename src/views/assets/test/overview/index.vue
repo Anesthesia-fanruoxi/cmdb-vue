@@ -1,6 +1,25 @@
 <template>
   <div class="overview-container">
-    <el-card>
+    <div class="filter-stats">
+      <div class="left-section">
+        <ProjectFilter
+          v-model="selectedProject"
+          :project-list="projectList"
+          @change="(val) => filterStatusData(projectList)"
+        />
+      </div>
+      <div class="right-section">
+        <StatusCards
+          v-model="statusFilter"
+          :running-count="getFilteredCount('running', projectList)"
+          :stopped-count="getFilteredCount('stopped', projectList)"
+          :total-count="getFilteredCount('total', projectList)"
+          @update:modelValue="handleStatusFilterChange"
+        />
+      </div>
+    </div>
+
+    <el-card class="table-card">
       <template #header>
         <div class="header">
           <h2>环境概览</h2>
@@ -9,19 +28,6 @@
           </el-button>
         </div>
       </template>
-
-      <ProjectFilter
-        v-model="selectedProject"
-        :project-list="projectList"
-        @change="(val) => filterStatusData(projectList)"
-      />
-
-      <StatusCards
-        v-model="statusFilter"
-        :running-count="getFilteredCount('running', projectList)"
-        :stopped-count="getFilteredCount('stopped', projectList)"
-        :total-count="getFilteredCount('total', projectList)"
-      />
 
       <StatusTable
         :data="statusData"
@@ -156,24 +162,57 @@ const getList = async () => {
     loading.value = false
   }
 }
+
+const handleStatusFilterChange = (status: string) => {
+  statusFilter.value = status
+  filterStatusData(projectList.value)
+}
 </script>
 
 <style scoped>
 .overview-container {
-  height: calc(100vh - 120px);
-  padding: 24px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.overview-container :deep(.el-card) {
-  height: 100%;
+.filter-stats {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex-shrink: 0;
 }
 
-.overview-container :deep(.el-card__body) {
-  height: calc(100% - 73px);
+.left-section {
+  flex: 1;
+  margin-bottom: 0;
+  overflow-x: auto;
+}
+
+.right-section {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.table-card {
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 20px;
+}
+
+:deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {

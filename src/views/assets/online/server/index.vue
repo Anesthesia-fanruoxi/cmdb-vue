@@ -1,18 +1,15 @@
 <template>
   <div class="server-container">
-    <!-- 过滤和统计卡片 -->
     <div class="filter-stats">
-      <div class="filter-box">
+      <div class="left-section">
         <el-radio-group
           v-model="filterProject"
           @change="handleFilter"
           class="filter-radio-group"
         >
+          <el-radio-button label="">全部</el-radio-button>
           <el-radio-button
-            label=""
-          >全部</el-radio-button>
-          <el-radio-button
-            v-for="project in projectOptions"
+            v-for="project in sortedProjects"
             :key="project"
             :label="project"
           >
@@ -20,21 +17,27 @@
           </el-radio-button>
         </el-radio-group>
       </div>
-      <div class="stat-cards">
+      <div class="right-section">
         <el-card class="stat-card">
-          <template #header>总服务器数</template>
+          <template #header>
+            <div class="stat-header">总数</div>
+          </template>
           <div class="stat-card-content" @click="handleFilterAll">
             <div class="stat-value">{{ statistics.total }}</div>
           </div>
         </el-card>
         <el-card class="stat-card">
-          <template #header>正常服务器</template>
+          <template #header>
+            <div class="stat-header">正常运行</div>
+          </template>
           <div class="stat-card-content" @click="handleFilterNormal">
             <div class="stat-value normal">{{ statistics.normal }}</div>
           </div>
         </el-card>
         <el-card class="stat-card">
-          <template #header>即将到期</template>
+          <template #header>
+            <div class="stat-header">即将到期</div>
+          </template>
           <div class="stat-card-content" @click="handleFilterWarning">
             <div class="stat-value warning">{{ statistics.warning }}</div>
           </div>
@@ -42,7 +45,7 @@
       </div>
     </div>
 
-    <el-card>
+    <el-card class="table-card">
       <template #header>
         <div class="card-header">
           <span>服务器管理</span>
@@ -57,8 +60,11 @@
       <el-table 
         :data="filteredData" 
         v-loading="loading"
+        @selection-change="handleSelectionChange"
+        height="calc(100vh - 380px)"
         style="width: 100%"
       >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="project" label="项目名称" min-width="120" />
         <el-table-column prop="instance_id" label="实例ID" min-width="120" />
         <el-table-column prop="instance_name" label="实例名称" min-width="120" />
@@ -95,7 +101,37 @@
             </span>
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <el-button-group>
+              <el-button 
+                type="danger" 
+                link
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
+              <el-button 
+                type="primary" 
+                link
+                @click="handleRenew([row.instance_id])"
+              >
+                续费
+              </el-button>
+            </el-button-group>
+          </template>
+        </el-table-column>
       </el-table>
+
+      <!-- 批量操作按钮 -->
+      <div class="batch-actions" v-if="selectedRows.length > 0">
+        <el-button 
+          type="primary" 
+          @click="handleRenew(selectedRows.map(row => row.instance_id))"
+        >
+          批量续费
+        </el-button>
+      </div>
     </el-card>
 
     <!-- 导入对话框 -->
@@ -150,15 +186,51 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 续费对话框 -->
+    <el-dialog
+      v-model="renewDialogVisible"
+      title="续费服务器"
+      width="400px"
+    >
+      <el-form :model="renewForm" label-width="100px">
+        <el-form-item label="续费时长">
+          <el-select v-model="renewForm.months">
+            <el-option :value="1" label="1个月" />
+            <el-option :value="3" label="3个月" />
+            <el-option :value="6" label="6个月" />
+            <el-option :value="12" label="1年" />
+            <el-option :value="24" label="2年" />
+            <el-option :value="36" label="3年" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="renewDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmRenew">
+            确认续费
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getServerAssets, importServerAssets, type ServerAsset } from '@/api/asset'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { 
+  getServerAssets, 
+  importServerAssets,
+  deleteServerAsset,
+  renewServerAsset,
+  type ServerAsset 
+} from '@/api/asset'
 import { getDeptProjects, type ProjectInfo } from '@/api/dept'
 import { useUserStore } from '@/store/modules/user'
+import { Monitor, CircleCheckFilled, WarningFilled, Grid, Folder } from '@element-plus/icons-vue'
+import FilterStatsCard from '@/components/FilterStatsCard/index.vue'
 
 interface Statistics {
   total: number
@@ -182,6 +254,16 @@ const statistics = ref<Statistics>({
   total: 0,
   normal: 0,
   warning: 0
+})
+
+// 选中的行
+const selectedRows = ref<ServerAsset[]>([])
+
+// 续费相关
+const renewDialogVisible = ref(false)
+const renewInstanceIds = ref<string[]>([])
+const renewForm = ref({
+  months: 12
 })
 
 // 获取部门项目列表
@@ -270,7 +352,16 @@ const handleImport = async () => {
 // 获取唯一的项目列表
 const projectOptions = computed(() => {
   const projects = new Set(tableData.value.map(item => item.project))
-  return Array.from(projects)
+  return Array.from(projects).map(project => ({
+    label: project,
+    value: project
+  }))
+})
+
+// 获取排序后的项目列表
+const sortedProjects = computed(() => {
+  const projects = Array.from(new Set(tableData.value.map(item => item.project)))
+  return projects.sort((a, b) => a.localeCompare(b))
 })
 
 // 检查是否即将到期（15天内）
@@ -349,6 +440,93 @@ const handleFilterWarning = () => {
   updateStatistics()
 }
 
+// 处理选择变化
+const handleSelectionChange = (rows: ServerAsset[]) => {
+  selectedRows.value = rows
+}
+
+// 处理删除
+const handleDelete = async (row: ServerAsset) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除服务器 ${row.instance_name} 吗？`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await deleteServerAsset(row.instance_id)
+    ElMessage.success('删除成功')
+    await fetchServerList()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
+// 处理续费
+const handleRenew = (instanceIds: string[]) => {
+  renewInstanceIds.value = instanceIds
+  renewDialogVisible.value = true
+}
+
+// 确认续费
+const confirmRenew = async () => {
+  try {
+    await renewServerAsset({
+      instance_ids: renewInstanceIds.value,
+      months: renewForm.value.months
+    })
+    ElMessage.success('续费成功')
+    renewDialogVisible.value = false
+    await fetchServerList()
+  } catch (error: any) {
+    ElMessage.error(error.message || '续费失败')
+  }
+}
+
+const statsData = computed(() => [
+  {
+    label: '总数',
+    value: statistics.value.total,
+    icon: 'Monitor',
+    type: 'primary',
+    action: 'all'
+  },
+  {
+    label: '正常运行',
+    value: statistics.value.normal,
+    icon: 'CircleCheckFilled',
+    type: 'success',
+    action: 'normal'
+  },
+  {
+    label: '即将到期',
+    value: statistics.value.warning,
+    icon: 'WarningFilled',
+    type: 'warning',
+    action: 'warning'
+  }
+])
+
+const handleStatAction = (action: string) => {
+  switch (action) {
+    case 'all':
+      handleFilterAll()
+      break
+    case 'normal':
+      handleFilterNormal()
+      break
+    case 'warning':
+      handleFilterWarning()
+      break
+  }
+}
+
 // 初始化加载数据
 onMounted(() => {
   fetchServerList()
@@ -357,8 +535,15 @@ onMounted(() => {
 
 <style scoped>
 .server-container {
-  padding: 20px;
-  height: 100%;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -409,42 +594,34 @@ onMounted(() => {
 }
 
 .filter-stats {
-  margin-bottom: 20px;
-}
-
-.filter-box {
-  margin-bottom: 20px;
-  overflow-x: auto;
-}
-
-.filter-radio-group {
+  margin-bottom: 16px;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 10px;
-}
-
-:deep(.el-radio-button__inner) {
-  border-radius: 20px;
-  padding: 8px 20px;
-}
-
-:deep(.el-radio-button:first-child .el-radio-button__inner) {
-  border-radius: 20px;
-}
-
-:deep(.el-radio-button:last-child .el-radio-button__inner) {
-  border-radius: 20px;
-}
-
-.stat-cards {
-  display: flex;
+  align-items: flex-start;
   gap: 20px;
+  flex-shrink: 0;
+}
+
+.left-section {
+  margin-bottom: 0;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.right-section {
+  display: flex;
+  gap: 16px;
+  width: 300px;
+  flex-shrink: 0;
 }
 
 .stat-card {
   flex: 1;
   cursor: pointer;
   transition: all 0.3s;
+  height: 50px;
+  border: 1px solid var(--el-border-color-light);
+  display: flex;
+  flex-direction: column;
 }
 
 .stat-card:hover {
@@ -452,14 +629,41 @@ onMounted(() => {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
+.stat-header {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  text-align: center;
+}
+
+:deep(.el-card__header) {
+  padding: 4px 8px;
+  background-color: var(--el-fill-color-light);
+  flex-shrink: 0;
+}
+
+:deep(.el-card__body) {
+  flex: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .stat-card-content {
-  padding: 20px;
+  text-align: center;
+  background-color: white;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: bold;
   text-align: center;
+  line-height: 1;
 }
 
 .normal {
@@ -472,5 +676,84 @@ onMounted(() => {
 
 .expire-warning {
   color: var(--el-color-danger);
+}
+
+.batch-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.table-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+:deep(.el-table) {
+  border-radius: 4px;
+  height: 100%;
+  flex: 1;
+}
+
+:deep(.el-table__body-wrapper) {
+  overflow-x: hidden;
+}
+
+:deep(.el-table__body-wrapper:hover) {
+  overflow-x: auto;
+}
+
+.filter-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+:deep(.el-radio-button__inner) {
+  border-radius: 20px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  height: 36px;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-light);
+}
+
+:deep(.el-radio-button__original) {
+  opacity: 0;
+}
+
+:deep(.el-radio-button:not(:first-child) .el-radio-button__inner) {
+  border-left: 1px solid var(--el-border-color-light);
+}
+
+:deep(.el-radio-button__inner:hover) {
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-7);
+  background: var(--el-color-primary-light-9);
+}
+
+:deep(.el-radio-button.is-active .el-radio-button__inner) {
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-7);
+  box-shadow: none;
+}
+
+:deep(.el-icon) {
+  font-size: 16px;
 }
 </style> 

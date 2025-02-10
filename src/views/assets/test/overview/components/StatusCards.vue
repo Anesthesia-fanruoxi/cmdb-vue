@@ -1,58 +1,29 @@
 <template>
-  <div class="overview-cards">
-    <el-row :gutter="20">
-      <el-col :span="8">
-        <el-card 
-          shadow="hover" 
-          class="stat-card" 
-          :class="{ active: modelValue === 'running' }"
-          @click="handleCardClick('running')"
-        >
-          <div class="stat-header running">
-            <span class="stat-label">运行中</span>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number" style="color: #67c23a;">
-              {{ runningCount }}
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card 
-          shadow="hover" 
-          class="stat-card" 
-          :class="{ active: modelValue === 'stopped' }"
-          @click="handleCardClick('stopped')"
-        >
-          <div class="stat-header stopped">
-            <span class="stat-label">已停止</span>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number" style="color: #f56c6c;">
-              {{ stoppedCount }}
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card 
-          shadow="hover" 
-          class="stat-card" 
-          :class="{ active: modelValue === 'all' }"
-          @click="handleCardClick('all')"
-        >
-          <div class="stat-header total">
-            <span class="stat-label">总计</span>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number" style="color: #909399;">
-              {{ totalCount }}
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+  <div class="status-cards">
+    <el-card class="stat-card" @click="handleCardClick('all')">
+      <template #header>
+        <div class="stat-header">总数</div>
+      </template>
+      <div class="stat-card-content">
+        <div class="stat-value">{{ totalCount }}</div>
+      </div>
+    </el-card>
+    <el-card class="stat-card" @click="handleCardClick('running')">
+      <template #header>
+        <div class="stat-header">运行中</div>
+      </template>
+      <div class="stat-card-content">
+        <div class="stat-value success">{{ runningCount }}</div>
+      </div>
+    </el-card>
+    <el-card class="stat-card" @click="handleCardClick('stopped')">
+      <template #header>
+        <div class="stat-header">已停止</div>
+      </template>
+      <div class="stat-card-content">
+        <div class="stat-value warning">{{ stoppedCount }}</div>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -69,110 +40,84 @@ const emit = defineEmits<{
 }>()
 
 const handleCardClick = (status: string) => {
-  emit('update:modelValue', status === props.modelValue ? 'all' : status)
+  if (status === props.modelValue) {
+    emit('update:modelValue', '')
+  } else {
+    emit('update:modelValue', status)
+  }
 }
 </script>
 
 <style scoped>
-.overview-cards {
-  margin: 24px 0;
-  flex-shrink: 0;
+.status-cards {
+  display: flex;
+  gap: 16px;
+  width: 300px; /* 与过滤栏对齐 */
 }
 
 .stat-card {
+  flex: 1;
   cursor: pointer;
-  transition: all 0.3s ease;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s;
+  height: 50px;
+  border: 1px solid var(--el-border-color-light);
   display: flex;
   flex-direction: column;
-  height: 160px;
 }
 
 .stat-card:hover {
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
-}
-
-.stat-card.active {
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.stat-card.active .stat-header {
-  filter: brightness(1.1);
-}
-
-.stat-card.active .stat-content {
-  background-color: rgba(246, 248, 255, 0.7);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .stat-header {
-  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
   text-align: center;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 40px;
-  flex: none;
 }
 
-.stat-header.running {
-  background-color: #67c23a;
+:deep(.el-card__header) {
+  padding: 4px 8px;
+  background-color: var(--el-fill-color-light);
+  flex-shrink: 0;
 }
 
-.stat-header.stopped {
-  background-color: #f56c6c;
-}
-
-.stat-header.total {
-  background-color: #909399;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: white;
-  font-weight: 500;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.stat-content {
+:deep(.el-card__body) {
   flex: 1;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.stat-card-content {
   text-align: center;
-  padding: 20px;
   background-color: white;
-  border: 1px solid #e4e7ed;
-  border-top: none;
-}
-
-.stat-number {
-  font-size: 48px;
-  font-weight: bold;
-  margin: 0;
-  line-height: 1;
-  transition: all 0.3s ease;
-}
-
-:deep(.stat-card .el-card__body) {
-  padding: 0;
-  border: none;
+  width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-:deep(.stat-card) {
-  border: none;
-  background: transparent;
+.stat-value {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1;
 }
 
-.stat-card:hover .stat-number {
-  transform: scale(1.1);
+.success {
+  color: var(--el-color-success);
+}
+
+.warning {
+  color: var(--el-color-warning);
+}
+
+.stat-card.active {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
 }
 </style>
 

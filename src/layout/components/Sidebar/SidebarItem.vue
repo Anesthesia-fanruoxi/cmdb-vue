@@ -1,126 +1,29 @@
 <template>
-  <div v-if="!item.meta?.hidden">
-    <!-- 没有子菜单的情况 -->
+  <div v-if="!item.hidden">
+    <!-- 无子菜单的情况 -->
     <template v-if="!hasChildren(item)">
-      <el-tooltip
-        v-if="isCollapse"
-        :content="item.meta?.title"
-        placement="right"
-        :show-after="100"
-      >
-        <el-menu-item :index="resolvePath(item.path)">
-          <el-icon>
-            <Box v-if="item.meta?.icon === 'Box'" />
-            <CloudFilled v-else-if="item.meta?.icon === 'Cloud'" />
-            <Experiment v-else-if="item.meta?.icon === 'Experiment'" />
-            <DataBase v-else-if="item.meta?.icon === 'DataBase'" />
-            <Monitor v-else-if="item.meta?.icon === 'Monitor'" />
-            <Connection v-else-if="item.meta?.icon === 'Connection'" />
-            <View v-else-if="item.meta?.icon === 'View'" />
-            <Position v-else-if="item.meta?.icon === 'Position'" />
-            <Setting v-else-if="item.meta?.icon === 'Setting'" />
-            <Document v-else-if="item.meta?.icon === 'Document'" />
-            <Bell v-else-if="item.meta?.icon === 'Bell'" />
-            <UserFilled v-else-if="item.meta?.icon === 'UserFilled'" />
-            <User v-else-if="item.meta?.icon === 'User'" />
-            <OfficeBuilding v-else-if="item.meta?.icon === 'OfficeBuilding'" />
-            <Menu v-else-if="item.meta?.icon === 'Menu'" />
-            <List v-else-if="item.meta?.icon === 'List'" />
-            <Document v-else />
-          </el-icon>
-          <template #title>
-            <span>{{ item.meta?.title }}</span>
-          </template>
-        </el-menu-item>
-      </el-tooltip>
-      <el-menu-item v-else :index="resolvePath(item.path)">
-        <el-icon>
-          <Box v-if="item.meta?.icon === 'Box'" />
-          <CloudFilled v-else-if="item.meta?.icon === 'Cloud'" />
-          <Experiment v-else-if="item.meta?.icon === 'Experiment'" />
-          <DataBase v-else-if="item.meta?.icon === 'DataBase'" />
-          <Monitor v-else-if="item.meta?.icon === 'Monitor'" />
-          <Connection v-else-if="item.meta?.icon === 'Connection'" />
-          <View v-else-if="item.meta?.icon === 'View'" />
-          <Position v-else-if="item.meta?.icon === 'Position'" />
-          <Setting v-else-if="item.meta?.icon === 'Setting'" />
-          <Document v-else-if="item.meta?.icon === 'Document'" />
-          <Bell v-else-if="item.meta?.icon === 'Bell'" />
-          <UserFilled v-else-if="item.meta?.icon === 'UserFilled'" />
-          <User v-else-if="item.meta?.icon === 'User'" />
-          <OfficeBuilding v-else-if="item.meta?.icon === 'OfficeBuilding'" />
-          <Menu v-else-if="item.meta?.icon === 'Menu'" />
-          <List v-else-if="item.meta?.icon === 'List'" />
-          <Document v-else />
+      <el-menu-item :index="resolvePath(item.path)">
+        <el-icon v-if="item.meta?.icon">
+          <component :is="item.meta.icon" />
         </el-icon>
-        <template #title>
-          <span>{{ item.meta?.title }}</span>
-        </template>
+        <template #title>{{ item.meta?.title }}</template>
       </el-menu-item>
     </template>
 
     <!-- 有子菜单的情况 -->
-    <el-sub-menu v-else :index="resolvePath(item.path)" :popper-append-to-body="true">
+    <el-sub-menu v-else :index="resolvePath(item.path)">
       <template #title>
-        <el-icon>
-          <Box v-if="item.meta?.icon === 'Box'" />
-          <CloudFilled v-else-if="item.meta?.icon === 'Cloud'" />
-          <Experiment v-else-if="item.meta?.icon === 'Experiment'" />
-          <DataBase v-else-if="item.meta?.icon === 'DataBase'" />
-          <Monitor v-else-if="item.meta?.icon === 'Monitor'" />
-          <Connection v-else-if="item.meta?.icon === 'Connection'" />
-          <View v-else-if="item.meta?.icon === 'View'" />
-          <Position v-else-if="item.meta?.icon === 'Position'" />
-          <Setting v-else-if="item.meta?.icon === 'Setting'" />
-          <Document v-else-if="item.meta?.icon === 'Document'" />
-          <Bell v-else-if="item.meta?.icon === 'Bell'" />
-          <UserFilled v-else-if="item.meta?.icon === 'UserFilled'" />
-          <User v-else-if="item.meta?.icon === 'User'" />
-          <OfficeBuilding v-else-if="item.meta?.icon === 'OfficeBuilding'" />
-          <Menu v-else-if="item.meta?.icon === 'Menu'" />
-          <List v-else-if="item.meta?.icon === 'List'" />
-          <Document v-else />
+        <el-icon v-if="item.meta?.icon">
+          <component :is="item.meta.icon" />
         </el-icon>
         <span>{{ item.meta?.title }}</span>
       </template>
-
-      <!-- 遍历子菜单 -->
-      <template v-if="item.children">
-        <template v-for="child in item.children" :key="child.path">
-          <!-- 如果还有子菜单，递归渲染 -->
-          <sidebar-item
-            v-if="hasChildren(child)"
-            :item="child"
-            :base-path="resolvePath(item.path)"
-            :is-collapse="isCollapse"
-          />
-          <!-- 没有子菜单，直接渲染菜单项 -->
-          <el-menu-item v-else :index="resolvePath(child.path)">
-            <el-icon>
-              <Box v-if="child.meta?.icon === 'Box'" />
-              <CloudFilled v-else-if="child.meta?.icon === 'Cloud'" />
-              <Experiment v-else-if="child.meta?.icon === 'Experiment'" />
-              <DataBase v-else-if="child.meta?.icon === 'DataBase'" />
-              <Monitor v-else-if="child.meta?.icon === 'Monitor'" />
-              <Connection v-else-if="child.meta?.icon === 'Connection'" />
-              <View v-else-if="child.meta?.icon === 'View'" />
-              <Position v-else-if="child.meta?.icon === 'Position'" />
-              <Setting v-else-if="child.meta?.icon === 'Setting'" />
-              <Document v-else-if="child.meta?.icon === 'Document'" />
-              <Bell v-else-if="child.meta?.icon === 'Bell'" />
-              <UserFilled v-else-if="child.meta?.icon === 'UserFilled'" />
-              <User v-else-if="child.meta?.icon === 'User'" />
-              <OfficeBuilding v-else-if="child.meta?.icon === 'OfficeBuilding'" />
-              <Menu v-else-if="child.meta?.icon === 'Menu'" />
-              <List v-else-if="child.meta?.icon === 'List'" />
-              <Document v-else />
-            </el-icon>
-            <template #title>
-              <span>{{ child.meta?.title }}</span>
-            </template>
-          </el-menu-item>
-        </template>
-      </template>
+      <sidebar-item
+        v-for="child in item.children"
+        :key="child.path"
+        :item="child"
+        :base-path="resolvePath(item.path)"
+      />
     </el-sub-menu>
   </div>
 </template>

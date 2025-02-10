@@ -65,22 +65,10 @@
         :rules="passwordRules"
         label-width="100px"
       >
-        <el-form-item label="新密码" prop="password">
-          <el-input
-            v-model="passwordForm.password"
-            type="password"
-            placeholder="请输入新密码"
-            show-password
-          />
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input
-            v-model="passwordForm.confirmPassword"
-            type="password"
-            placeholder="请再次输入新密码"
-            show-password
-          />
-        </el-form-item>
+        <profile-password-fields 
+          v-model:password="passwordForm.password"
+          v-model:confirmPassword="passwordForm.confirmPassword"
+        />
       </el-form>
       <template #footer>
         <el-button @click="handleCancelPassword">取消</el-button>
@@ -102,8 +90,9 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import type { FormInstance } from 'element-plus'
 import { getUserInfo, updateUser } from '@/api/user'
-import type { UserInfo } from '@/api/user'
+import type { UserInfo, UpdateUserParams } from '@/api/user'
 import { useUserStore } from '@/store/modules/user'
+import ProfilePasswordFields from './components/ProfilePasswordFields.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -111,7 +100,15 @@ const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726
 
 // 用户信息
 const userInfo = ref<UserInfo>({} as UserInfo)
-const originalFormData = ref<any>(null)
+const originalFormData = ref<{
+  nickname: string
+  email: string
+  phone: string
+}>({
+  nickname: '',
+  email: '',
+  phone: ''
+})
 
 // 表单相关
 const formRef = ref<FormInstance>()
@@ -152,23 +149,42 @@ const passwordForm = reactive({
   confirmPassword: ''
 })
 
+// 密码验证规则
+const validatePassword = (rule: any, value: string, callback: any) => {
+  if (!value) {
+    callback(new Error('请输入密码'))
+    return
+  }
+
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,32}$/
+  if (!passwordRegex.test(value)) {
+    callback(new Error('密码必须包含大小写字母和数字，长度8-32位'))
+    return
+  }
+  
+  callback()
+}
+
+const validateConfirmPassword = (rule: any, value: string, callback: any) => {
+  if (!value) {
+    callback(new Error('请再次输入密码'))
+    return
+  }
+
+  if (value !== passwordForm.password) {
+    callback(new Error('两次输入的密码不一致'))
+    return
+  }
+  
+  callback()
+}
+
 const passwordRules = {
   password: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
+    { validator: validatePassword, trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
-    {
-      validator: (rule: any, value: string, callback: Function) => {
-        if (value !== passwordForm.password) {
-          callback(new Error('两次输入的密码不一致'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'blur'
-    }
+    { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 }
 
@@ -208,7 +224,7 @@ const handleSubmit = async () => {
     submitLoading.value = true
     
     // 只收集修改过的字段
-    const updateData: Record<string, any> = {
+    const updateData: UpdateUserParams = {
       id: userInfo.value.id
     }
     
@@ -263,20 +279,17 @@ const handlePasswordSubmit = async () => {
     await passwordFormRef.value.validate()
     passwordSubmitLoading.value = true
     
-    // 组装密码修改数据
-    const updateData = {
+    const updateData: UpdateUserParams = {
       id: userInfo.value.id,
       password: passwordForm.password
     }
     
-    console.log('修改密码请求数据:', updateData)
     await updateUser(updateData)
     ElMessage.success('密码修改成功，请重新登录')
     passwordDialogVisible.value = false
     await userStore.logout()
     router.push('/login')
   } catch (error: any) {
-    console.error('修改密码失败:', error)
     ElMessage.error(error.message || '修改密码失败')
   } finally {
     passwordSubmitLoading.value = false
@@ -290,7 +303,7 @@ onMounted(async () => {
 })
 
 // 监听用户信息变化
-watch(userInfo, (newVal) => {
+watch(userInfo, (newVal: UserInfo) => {
   console.log('用户信息发生变化:', newVal)
   if (newVal) {
     formData.nickname = newVal.nickname || ''
