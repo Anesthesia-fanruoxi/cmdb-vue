@@ -2,12 +2,13 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { getToken } from '@/utils/auth'
 
-const service = axios.create({
-  baseURL: 'http://localhost:3000/api'
+const request = axios.create({
+  baseURL: '/api',
+  timeout: 5000
 })
 
 // 请求拦截器
-service.interceptors.request.use(
+request.interceptors.request.use(
   config => {
     const token = getToken()
     if (token) {
@@ -22,7 +23,7 @@ service.interceptors.request.use(
 )
 
 // 响应拦截器
-service.interceptors.response.use(
+request.interceptors.response.use(
   response => {
     const res = response.data
     if (res.code === 200) {
@@ -44,4 +45,4 @@ service.interceptors.response.use(
   }
 )
 
-export default service
+export default request
