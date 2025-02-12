@@ -162,9 +162,9 @@
         :data="projectList"
         border
         stripe
-        row-key="id"
+        :row-key="(row) => row.project"
       >
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="55" :reserve-selection="false" />
         <el-table-column prop="project_name" label="项目名称" width="180" />
         <el-table-column prop="project" label="项目编码" width="120" />
       </el-table>
@@ -184,7 +184,7 @@ import { Search, Edit, Delete, Setting, Refresh, Plus } from '@element-plus/icon
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getDepartmentList, createDepartment, updateDepartment, deleteDepartment, 
-  getProjectDict, updateDepartmentProjects, getDepartmentProjects 
+  getProjectDict, updateDepartmentProjects, getDeptProjects
 } from '@/api/department'
 import type { Department } from '@/api/department'
 import { useRouter } from 'vue-router'
@@ -433,26 +433,33 @@ const projectList = ref<any[]>([])
 const projectTableRef = ref()
 const currentDept = ref<Department | null>(null)
 
-// 修改项目配置按钮的处理方法
-const handleProjectConfig = async (row: Department) => {
-  currentDept.value = row
-  projectDialogVisible.value = true
-  await Promise.all([
-    getProjectList(),
-    getDeptProjects(row.id)
-  ])
+// 获取项目列表
+const getProjectList = async () => {
+  try {
+    const res = await getProjectDict()
+    if (res.code === 200) {
+      projectList.value = res.data
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取项目列表失败')
+  }
 }
 
-// 获取部门的项目配置
-const getDeptProjects = async (deptId: number) => {
+// 获取部门关联的项目
+const loadDeptProjects = async (deptId: number) => {
   try {
-    const res = await getDepartmentProjects(deptId)
-    if (res.code === 200) {
-      // 保存已配置的项目编码列表，用于设置选中状态
-      const configuredProjects = new Set(res.data)
+    const res = await getDeptProjects(deptId)
+    if (res.code === 200 && res.data) {  // 直接使用 res.data，因为它是字符串数组
       nextTick(() => {
+        // 清除之前的选择
+        projectTableRef.value?.clearSelection()
+        
+        // 创建已关联项目的集合
+        const selectedProjects = new Set(res.data)  // 直接使用 res.data
+        
+        // 设置选中状态
         projectList.value.forEach(item => {
-          if (configuredProjects.has(item.project)) {
+          if (selectedProjects.has(item.project)) {
             projectTableRef.value?.toggleRowSelection(item, true)
           }
         })
@@ -463,20 +470,18 @@ const getDeptProjects = async (deptId: number) => {
   }
 }
 
-// 获取项目列表
-const getProjectList = async () => {
+// 修改项目配置按钮的处理方法
+const handleProjectConfig = async (row: Department) => {
+  currentDept.value = row
+  projectDialogVisible.value = true
+  projectLoading.value = true
+  
   try {
-    projectLoading.value = true
-    const res = await getProjectDict()
-    if (res.code === 200) {
-      projectList.value = res.data.map(item => ({
-        id: item.id,
-        project_name: item.project_name,
-        project: item.project,
-      }))
-    }
+    // 先获取项目列表，再获取部门项目关联
+    await getProjectList()
+    await loadDeptProjects(row.id)
   } catch (error: any) {
-    ElMessage.error(error.message || '获取项目列表失败')
+    ElMessage.error(error.message || '获取项目配置失败')
   } finally {
     projectLoading.value = false
   }

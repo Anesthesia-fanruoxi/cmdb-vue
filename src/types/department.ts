@@ -42,4 +42,12 @@ export interface DepartmentPageResult {
   page: number
   page_size: number
   total: number
+}
+
+export interface Department {
+  id: number
+  name: string
+  code: string
+  parent_id?: number
+  children?: Department[]
 } 

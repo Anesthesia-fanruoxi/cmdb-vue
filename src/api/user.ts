@@ -1,6 +1,7 @@
 import request from '@/utils/request'
 import type { Role } from './role'
 import type { Department } from './department'
+import type { ApiResponse } from '@/types/api'
 
 // 用户信息响应类型
 export interface UserInfo {
@@ -29,8 +30,7 @@ export interface UserQueryParams {
   phone: string
   email: string
   status: string
-  pageNum: number
-  pageSize: number
+  dept_id?: number
 }
 
 // 用户列表项类型
@@ -81,7 +81,6 @@ export interface UpdateUserParams {
 // 用户列表响应类型
 export interface UserListResponse {
   list: UserListItem[]
-  total: number
 }
 
 // 登录参数
@@ -151,20 +150,23 @@ export function deleteUser(id: number) {
   })
 }
 
-// 更新用户状态
-export function updateUserStatus(id: number, status: 'enabled' | 'disabled') {
-  return request<null>({
-    url: '/system/user/status',
+// 更新个人信息
+export function updateProfile(data: UpdateUserParams) {
+  return request<ApiResponse<User>>({
+    url: '/user/profile',
     method: 'post',
-    data: { id, status }
+    data
   })
 }
 
-// 重置密码
-export function resetUserPassword(id: number) {
+// 更新用户状态
+export function updateUserStatus(id: number, is_enabled: 0 | 1) {
   return request<null>({
-    url: '/user/reset-password',
+    url: '/system/user/update',
     method: 'post',
-    data: { id }
+    data: { 
+      id,
+      is_enabled
+    }
   })
 }

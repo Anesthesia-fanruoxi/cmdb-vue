@@ -111,18 +111,6 @@ export function getProjectDict() {
   })
 }
 
-// 获取部门项目配置
-export function getDepartmentProjects(deptId: number) {
-  return request<{
-    code: number
-    data: string[]  // 项目编码列表
-  }>({
-    url: '/system/dept/project',
-    method: 'get',
-    params: { dept_id: deptId }
-  })
-}
-
 // 更新部门项目关联
 export function updateDepartmentProjects(deptId: number, projectCodes: string[]) {
   return request<{
@@ -135,5 +123,19 @@ export function updateDepartmentProjects(deptId: number, projectCodes: string[])
       id: deptId, 
       projects: projectCodes 
     }
+  })
+}
+
+// 获取部门关联的项目列表
+export function getDeptProjects(deptId: number) {
+  return request<{
+    code: number
+    data: {
+      projects: string[] // 部门关联的项目编码数组
+    }
+  }>({
+    url: '/system/dept/project',
+    method: 'get',
+    params: { dept_id: deptId }
   })
 } 

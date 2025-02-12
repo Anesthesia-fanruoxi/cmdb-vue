@@ -118,6 +118,11 @@
             <el-tag>{{ row.type }}</el-tag>
           </template>
         </el-table-column>
+																		
+									   
+							  
+					 
+						  
       </el-table>
 
       <!-- 中间件映射关系表格 -->
@@ -154,13 +159,13 @@
         </el-table-column>
         <el-table-column label="密码" min-width="120">
           <template #default="{ row }">
-            <el-tag 
-              type="warning" 
-              class="port-tag" 
-              @dblclick="handlePasswordClick(row.service_name)"
-            >
-              ******
-            </el-tag>
+<!--            <el-tag -->
+<!--              type="warning" -->
+<!--              class="port-tag" -->
+<!--              @dblclick="handlePasswordClick(row.service_name)"-->
+<!--            >-->
+<!--              ******-->
+<!--            </el-tag>-->
           </template>
         </el-table-column>
         <el-table-column label="访问地址" min-width="200">
@@ -197,7 +202,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
-import { getDepartmentProjects } from '@/api/department'
+import { getDeptProjects } from '@/api/department'
 import { useUserStore } from '@/store/modules/user'
 import { getClusterServices } from '@/api/cluster'
 
@@ -221,6 +226,7 @@ interface PortMapping {
   debug_port?: number
   service_port?: number
   jvm_port?: number
+				  
 }
 
 interface Namespace {
@@ -252,7 +258,7 @@ const fetchAllPortMappings = async () => {
     // 获取部门的项目列表
     let projects: string[] = []
     if (deptId) {
-      const projectRes = await getDepartmentProjects(deptId)
+      const projectRes = await getDeptProjects(deptId)
       if (projectRes.code === 200) {
         projects = projectRes.data
       }
@@ -396,6 +402,10 @@ const getMiddlewareUsername = (serviceName: string) => {
       return 'nacos'
     case 'rabbitmq-server':
       return 'admin'
+    case 'mysql':
+      return 'root'
+    case 'mongodb':
+      return 'admin'
     default:
       return '-'
   }
@@ -407,6 +417,12 @@ const getMiddlewarePassword = (serviceName: string) => {
     case 'nacos':
       return 'nacos'
     case 'rabbitmq-server':
+      return 'admin123'
+    case 'mysql':
+      return 'admin123'
+    case 'redis':
+      return 'admin123'
+    case 'mongodb':
       return 'admin123'
     default:
       return ''
@@ -563,4 +579,9 @@ onMounted(() => {
   color: #909399;
   font-size: 13px;
 }
+
+				
+																											
+				  
+ 
 </style> 

@@ -129,19 +129,33 @@ import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import dayjs from 'dayjs'
 import { Lunar, Solar } from 'lunar-javascript' // 需要安装 lunar-javascript
 import { Calendar, Sunny, Moon, Star } from '@element-plus/icons-vue'
+import type { ElTagType } from '@/types/element-plus'
+import type { Component } from 'vue'
 
-const props = defineProps<{
+// 定义 props 类型
+interface Props {
   isCollapse: boolean
-}>()
+}
+
+const props = defineProps<Props>()
+
+// 给 timer 正确的类型
+let timer: number | undefined
 
 const now = ref(new Date())
-let timer: number
 
 // 更新时间
 const updateTime = () => {
   now.value = new Date()
   timer = requestAnimationFrame(updateTime)
 }
+
+// 在组件卸载时清除定时器
+onUnmounted(() => {
+  if (timer) {
+    cancelAnimationFrame(timer)
+  }
+})
 
 // 计算指针角度
 const hourHandStyle = computed(() => {
@@ -286,7 +300,7 @@ const simpleLunarInfo = computed(() => {
 })
 
 // 星座图标映射
-const constellationIcons = {
+const constellationIcons: Record<string, Component> = {
   '水瓶座': Calendar,
   '双鱼座': Moon,
   '白羊座': Star,
@@ -303,7 +317,8 @@ const constellationIcons = {
 
 // 获取当前星座图标
 const constellationIcon = computed(() => {
-  return constellationIcons[getConstellation(now.value)]
+  const constellation = getConstellation(now.value)
+  return constellationIcons[constellation] || Calendar // 提供默认值
 })
 
 // 星期几
@@ -322,10 +337,6 @@ const fortuneData = reactive({
 
 onMounted(() => {
   timer = requestAnimationFrame(updateTime)
-})
-
-onUnmounted(() => {
-  cancelAnimationFrame(timer)
 })
 </script>
 

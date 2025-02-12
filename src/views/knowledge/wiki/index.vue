@@ -119,7 +119,7 @@
           <span>浏览量：{{ currentPage.views }}</span>
         </div>
         
-        <div class="content-body markdown-body" v-html="pageContent" />
+        <div class="content-body markdown-body" v-html="renderContent" />
       </el-card>
       
       <div v-else class="empty-content">
@@ -318,11 +318,15 @@ import { ref, reactive, computed } from 'vue'
 import { More, Search, ArrowRight } from '@element-plus/icons-vue'
 import type { FormInstance } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import * as marked from 'marked'
+import { parseMarkdown } from '@/utils/markdown'
+import type { WikiSpace, WikiPage, WikiVersion, WikiFormData, MoveFormData } from '@/types/wiki'
 import 'github-markdown-css'
 
+// 搜索关键词
+const searchKeyword = ref('')
+
 // 树形数据
-const treeData = ref([
+const treeData = ref<WikiSpace[]>([
   {
     id: 1,
     label: '开发文档',
@@ -333,25 +337,6 @@ const treeData = ref([
         label: '前端规范',
         type: 'page',
         content: '# 前端开发规范\n\n## 1. 代码风格\n...'
-      },
-      {
-        id: 12,
-        label: '后端规范',
-        type: 'page',
-        content: '# 后端开发规范\n\n## 1. 接口规范\n...'
-      }
-    ]
-  },
-  {
-    id: 2,
-    label: '运维文档',
-    type: 'space',
-    children: [
-      {
-        id: 21,
-        label: '部署指南',
-        type: 'page',
-        content: '# 系统部署指南\n\n## 1. 环境准备\n...'
       }
     ]
   }
@@ -364,12 +349,12 @@ const treeProps = {
 }
 
 // 当前页面
-const currentPage = ref<any>(null)
+const currentPage = ref<WikiPage | null>(null)
 
 // 页面内容
-const pageContent = computed(() => {
+const renderContent = computed(() => {
   if (!currentPage.value?.content) return ''
-  return marked.parse(currentPage.value.content)
+  return parseMarkdown(currentPage.value.content)
 })
 
 // 编辑相关
@@ -395,7 +380,7 @@ const getDialogTitle = computed(() => {
 // 编辑器相关
 const editorMode = ref('markdown')
 const previewContent = computed(() => {
-  return marked.parse(formData.content)
+  return parseMarkdown(formData.content)
 })
 
 // 表单校验规则
@@ -431,8 +416,26 @@ const spaceList = computed(() => {
   }))
 })
 
+// 版本相关
+const versionDialogVisible = ref(false)
+const versionHistory = ref<WikiVersion[]>([])
+const currentVersion = ref<number | null>(null)
+
+// 版本对比
+const compareDialogVisible = ref(false)
+const compareFrom = ref<number | null>(null)
+const compareTo = ref<number | null>(null)
+const fromContent = ref('')
+const toContent = ref('')
+
+// 获取版本标签
+const getVersionLabel = (versionId: number | null) => {
+  const version = versionHistory.value.find(v => v.id === versionId)
+  return version ? `${version.version}` : ''
+}
+
 // 树节点点击
-const handleNodeClick = (data: any) => {
+const handleNodeClick = (data: WikiSpace | WikiPage) => {
   if (data.type === 'page') {
     currentPage.value = {
       ...data,
@@ -454,7 +457,7 @@ const handleAddSpace = () => {
 }
 
 // 新建页面
-const handleAddPage = (space: any) => {
+const handleAddPage = (space: WikiSpace) => {
   formData.id = null
   formData.type = 'page'
   formData.title = ''
@@ -464,7 +467,7 @@ const handleAddPage = (space: any) => {
 }
 
 // 处理命令
-const handleCommand = (command: string, data: any) => {
+const handleCommand = (command: string, data: WikiSpace | WikiPage) => {
   switch (command) {
     case 'edit':
       handleEdit(data)
@@ -479,23 +482,23 @@ const handleCommand = (command: string, data: any) => {
 }
 
 // 编辑
-const handleEdit = (data: any) => {
+const handleEdit = (data: WikiSpace | WikiPage) => {
   formData.id = data.id
   formData.type = data.type
   formData.title = data.label
-  formData.content = data.content || ''
+  formData.content = 'page' in data ? data.content : ''
   formData.parentId = null // TODO: 获取父节点ID
   dialogVisible.value = true
 }
 
 // 移动
-const handleMove = (data: any) => {
+const handleMove = (data: WikiSpace | WikiPage) => {
   moveForm.targetSpace = null
   moveDialogVisible.value = true
 }
 
 // 删除
-const handleDelete = (data: any) => {
+const handleDelete = (data: WikiSpace | WikiPage) => {
   ElMessageBox.confirm(
     `确认删除${data.type === 'space' ? '空间' : '页面'}「${data.label}」？`,
     '提示',
@@ -548,6 +551,39 @@ const handleMoveSubmit = async () => {
       moveDialogVisible.value = false
     }
   })
+}
+
+// 处理搜索
+const handleSearch = (value: string) => {
+  console.log('search:', value)
+}
+
+// 版本相关处理函数
+const handleVersion = () => {
+  if (!currentPage.value) return
+  versionDialogVisible.value = true
+  // TODO: 加载版本历史
+}
+
+const handleViewVersion = (version: WikiVersion) => {
+  // TODO: 查看版本内容
+  console.log('view version:', version)
+}
+
+const handleRollback = (version: WikiVersion) => {
+  ElMessageBox.confirm(`确认回滚到版本 ${version.version}？`, '提示', {
+    type: 'warning'
+  }).then(() => {
+    // TODO: 实现回滚逻辑
+    ElMessage.success('回滚成功')
+  })
+}
+
+const handleCompareVersion = (version: WikiVersion) => {
+  compareFrom.value = version.id
+  compareTo.value = currentVersion.value
+  compareDialogVisible.value = true
+  // TODO: 加载对比内容
 }
 </script>
 

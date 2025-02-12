@@ -1,13 +1,22 @@
+import type { ApiResponse } from '@/types/api'
+import type { 
+  DictQueryParams,
+  DictItem,
+  DictItemData,
+  CreateDictParams,
+  UpdateDictParams,
+  CreateDictItemParams,
+  UpdateDictItemParams
+} from '@/types/dict'
 import request from '@/utils/request'
 
 // 获取字典列表
-export const getDictList = (params: DictQueryParams) => {
-  return request.get<ApiResponse<{
-    list: DictItem[]
-    pagination: {
-      total: number
-    }
-  }>>('/system/dict/list', { params })
+export function getDicts(params: DictQueryParams) {
+  return request<ApiResponse<DictItemData[]>>({
+    url: '/system/dict/list',
+    method: 'get',
+    params
+  })
 }
 
 // 获取字典项数据

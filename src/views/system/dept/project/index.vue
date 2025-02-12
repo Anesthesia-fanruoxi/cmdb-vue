@@ -37,15 +37,32 @@
 import { ref, onMounted, nextTick } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute } from 'vue-router';
-import { getProjectDict } from '@/api/project-dict'
-import { getDepartmentProjects, updateDepartmentProjects } from '@/api/department'
+import { getProjectDict, updateDepartmentProjects } from '@/api/department'
+import type { ApiResponse } from '@/types/api'
+
+interface Project {
+  id: number
+  project: string
+  project_name: string
+  department_id?: number
+}
+
+interface ProjectResponse {
+  code: number
+  data: Project[]
+}
+
+interface DeptProjectResponse {
+  code: number
+  data: string[]
+}
 
 // 加载状态
 const loading = ref(false);
 const submitLoading = ref(false);
 
 // 项目列表
-const projectList = ref<any[]>([]);
+const projectList = ref<Project[]>([]);
 const tableRef = ref();
 
 const route = useRoute();
@@ -56,29 +73,25 @@ const deptName = route.query.deptName as string;
 const pageTitle = `${deptName || ''} - 项目配置`;
 
 // 获取项目列表
-const getList = async () => {
+const getProjectList = async () => {
   if (!deptId) return;
   
   try {
     loading.value = true;
-    // 先获取部门的项目列表
-    const deptProjectRes = await getDepartmentProjects(Number(deptId));
-    let projects: string[] = [];
-    if (deptProjectRes.code === 200) {
-      projects = deptProjectRes.data;
-    }
-    
     // 获取所有项目
-    const projectRes = await getProjectDict(projects);
-    if (projectRes.code === 200) {
-      projectList.value = projectRes.data;
+    const { data: projectResponse } = await getProjectDict();
+    if (projectResponse.code === 200) {
+      projectList.value = projectResponse.data;
+      
+      // 根据部门ID过滤项目
+      const deptProjects = projectList.value.filter(item => 
+        item.department_id === Number(deptId)
+      );
       
       // 设置选中状态
       nextTick(() => {
-        projectList.value.forEach(item => {
-          if (projects.includes(item.project)) {
-            tableRef.value?.toggleRowSelection(item, true);
-          }
+        deptProjects.forEach((item: Project) => {
+          tableRef.value?.toggleRowSelection(item, true);
         });
       });
     }
@@ -93,8 +106,8 @@ const getList = async () => {
 const handleSubmit = async () => {
   try {
     submitLoading.value = true;
-    const selectedRows = tableRef.value?.getSelectionRows();
-    const projectCodes = selectedRows.map(row => row.project);
+    const selectedRows = tableRef.value?.getSelectionRows() as Project[];
+    const projectCodes = selectedRows.map((row: Project) => row.project);
 
     await updateDepartmentProjects(Number(deptId), projectCodes);
     ElMessage.success('配置成功');
@@ -107,7 +120,7 @@ const handleSubmit = async () => {
 
 // 初始化
 onMounted(() => {
-  getList();
+  getProjectList();
 });
 </script>
 

@@ -38,10 +38,11 @@ export const iterateCluster = (data: { namespace: string; branch: string; remark
   })
 }
 
-// 获取集群服务端口映射
-export function getClusterServices(params: ProjectParams) {
+// 获取集群服务列表
+export function getClusterServices(params: { projects: string[] }) {
   return request({
     url: '/asset/test/cluster/services',
     method: 'get',
+    params
   })
 } 

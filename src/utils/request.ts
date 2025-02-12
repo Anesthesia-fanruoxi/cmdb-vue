@@ -1,6 +1,7 @@
-import axios from 'axios'
+import axios, { AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import { getToken } from '@/utils/auth'
+import type { ApiResponse } from '@/types/api'
 
 const request = axios.create({
   baseURL: '/api',
@@ -24,23 +25,32 @@ request.interceptors.request.use(
 
 // 响应拦截器
 request.interceptors.response.use(
-  response => {
+  (response: AxiosResponse) => {
     const res = response.data
     if (res.code === 200) {
       return res
     }
     
-    ElMessage.error(res.message || '请求失败')
+    // 根据不同的错误码显示不同的错误信息
+    switch (res.code) {
+      case 401:
+        ElMessage.error('用户名或密码错误')
+        break
+      case 403:
+        ElMessage.error('没有权限访问')
+        break
+      case 429:
+        ElMessage.error('请求过于频繁，请稍后再试')
+        break
+      default:
+        ElMessage.error(res.message || '请求失败')
+    }
     return Promise.reject(new Error(res.message || '请求失败'))
   },
   error => {
     console.error('响应错误:', error)
-    if (error.response?.status === 401) {
-      // token 过期或无效，跳转到登录页
-      localStorage.removeItem('token')
-      window.location.href = '/login'
-    }
-    ElMessage.error(error.message || '请求失败')
+    const message = error.response?.data?.message || error.message
+    ElMessage.error(message || '网络错误，请稍后重试')
     return Promise.reject(error)
   }
 )

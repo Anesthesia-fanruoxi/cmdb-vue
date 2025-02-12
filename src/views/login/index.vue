@@ -86,7 +86,7 @@ const handleLogin = async () => {
     await formRef.value.validate()
     
     // 调用 store 中的登录方法
-    await userStore.login({
+    const res = await userStore.login({
       username: formData.username,
       password: formData.password
     })
@@ -95,7 +95,14 @@ const handleLogin = async () => {
     router.push('/')
   } catch (error: any) {
     console.error('登录失败:', error)
-    ElMessage.error(error.message || '登录失败，请检查用户名和密码')
+    // 不再直接重置表单，而是保留用户输入
+    if (error.response?.status === 401) {
+      ElMessage.error('用户名或密码错误')
+    } else if (error.response?.status === 429) {
+      ElMessage.error('登录尝试次数过多，请稍后再试')
+    } else {
+      ElMessage.error(error.message || '登录失败，请稍后重试')
+    }
   } finally {
     loading.value = false
   }

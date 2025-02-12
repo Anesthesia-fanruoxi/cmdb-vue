@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { ClusterStatus, ApiResponse, ProjectDict } from '../types'
 import request from '../../../../../utils/request'
-import { getDepartmentProjects } from '@/api/department'
+import { getProjectDict } from '@/api/department'
 import { useUserStore } from '@/store/modules/user'
 import { getClusterStatus, scaleCluster, batchScaleCluster } from '@/api/cluster'
 
@@ -45,7 +45,7 @@ export const useClusterStatus = () => {
       // 获取部门的项目列表
       let projects: string[] = []
       if (deptId) {
-        const projectRes = await getDepartmentProjects(deptId)
+        const projectRes = await getProjectDict(deptId)
         if (projectRes.code === 200) {
           projects = projectRes.data
         }

@@ -5,16 +5,30 @@ export interface ApiResponse<T> {
   data: T
 }
 
-// 字典项
+// 字典查询参数
+export interface DictQueryParams {
+  name?: string
+  code?: string
+  page?: number
+  page_size?: number
+}
+
+// 字典项数据
 export interface DictItem {
   id: number
-  dict_name: string
-  table_name: string
-  key_name: string
-  value_name: string
-  nickname: string
-  created_at: string
-  updated_at: string
+  dict_id: number
+  label: string
+  value: string
+  sort: number
+  is_enabled: boolean
+}
+
+// 字典项数据响应
+export interface DictItemData {
+  id: number
+  name: string
+  code: string
+  items: DictItem[]
 }
 
 // 字典表单
@@ -25,24 +39,11 @@ export interface DictForm {
   value_name: string
 }
 
-// 字典项数据
-export interface DictItemData {
-  [key: string]: string | number
-}
-
-// 查询参数
-export interface DictQueryParams {
-  page: number
-  page_size: number
-  dict_name?: string
-}
-
 // 创建字典参数
 export interface CreateDictParams {
-  dict_name: string
-  table_name: string
-  key_name: string
-  value_name: string
+  name: string
+  code: string
+  description?: string
 }
 
 // 更新字典参数
@@ -52,9 +53,16 @@ export interface UpdateDictParams extends CreateDictParams {
 
 // 创建字典项参数
 export interface CreateDictItemParams {
-  table_name: string
-  key: string
+  dict_id: number
+  label: string
   value: string
+  sort?: number
+  is_enabled?: boolean
+}
+
+// 更新字典项参数
+export interface UpdateDictItemParams extends CreateDictItemParams {
+  id: number
 }
 
 // 分页响应

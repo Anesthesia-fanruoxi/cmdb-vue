@@ -109,13 +109,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getDictList, deleteDict } from '@/api/dict'
+import { getDicts, deleteDict } from '@/api/dict'
 import type { DictItem } from '@/types/dict'
 import DictView from './DictView.vue'
 import DictForm from './DictForm.vue'
 import DictItemForm from './DictItemForm.vue'
+import { useUserStore } from '@/store/modules/user'
 
 // 查询参数
 const queryParams = reactive({
@@ -135,6 +136,11 @@ const editDialogVisible = ref(false)
 const itemFormVisible = ref(false)
 const currentDict = ref<DictItem>({} as DictItem)
 
+// 用户相关
+const userStore = useUserStore()
+const isManager = ref(false)
+const currentUserDeptId = ref(0)
+
 // 获取字典列表
 const getList = async () => {
   loading.value = true
@@ -144,7 +150,7 @@ const getList = async () => {
       page_size: queryParams.page_size,
       dict_name: queryParams.dict_name || undefined
     }
-    const { data } = await getDictList(params)
+    const { data } = await getDicts(params)
     console.log('API Response:', data)
     dictList.value = data
     total.value = data.length
@@ -221,6 +227,68 @@ const handleSuccess = () => {
 onMounted(() => {
   getList()
 })
+
+// 提交表单
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  
+  try {
+    await formRef.value.validate()
+    
+    // 权限验证
+    if (isManager.value) {
+      // 主管创建用户时的验证
+      if (dialogType.value === 'create') {
+        if (formData.role_id !== 3) { // 普通用户角色ID
+          ElMessage.error('主管只能创建普通用户')
+          return
+        }
+        if (formData.dept_id !== currentUserDeptId.value) {
+          ElMessage.error('主管只能在自己的部门创建用户')
+          return
+        }
+      }
+      
+      // 主管编辑用户时的验证
+      if (dialogType.value === 'edit') {
+        const originalUser = currentRow.value
+        if (formData.role_id !== originalUser.role_id || 
+            formData.dept_id !== originalUser.dept_id) {
+          ElMessage.error('主管不能修改用户的角色和部门')
+          return
+        }
+      }
+    }
+    
+    // 提交表单
+    if (dialogType.value === 'create') {
+      await createUser(formData)
+      ElMessage.success('创建成功')
+    } else {
+      await updateUser(formData)
+      ElMessage.success('更新成功')
+    }
+    
+    dialogVisible.value = false
+    getList()
+  } catch (error: any) {
+    ElMessage.error(error.message || '操作失败')
+  }
+}
+
+// 打开表单对话框时的处理
+const handleAdd = () => {
+  dialogType.value = 'create'
+  dialogVisible.value = true
+  nextTick(() => {
+    formRef.value?.resetFields()
+    // 设置默认值
+    if (isManager.value) {
+      formData.role_id = getDefaultValue('role_id')
+      formData.dept_id = getDefaultValue('dept_id')
+    }
+  })
+}
 </script>
 
 <style scoped>

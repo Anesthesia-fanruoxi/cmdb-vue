@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import PasswordRules from './PasswordRules.vue'
 
 const props = withDefaults(defineProps<{
@@ -31,13 +31,27 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'update:isValid', value: boolean): void
+  (e: 'validate', value: boolean): void
 }>()
 
 const password = ref(props.modelValue)
 const isValid = ref(false)
 
+watch(
+  () => props.modelValue,
+  (val: string) => {
+    password.value = val
+  }
+)
+
 const handleInput = (value: string) => {
   emit('update:modelValue', value)
+  const isValid = validatePassword(value)
+  emit('validate', isValid)
+}
+
+const validatePassword = (value: string): boolean => {
+  return value.length >= 6
 }
 
 watch(() => isValid.value, (val) => {

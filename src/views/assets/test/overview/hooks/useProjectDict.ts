@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import type { ProjectDict, GitDict, ApiResponse } from '../types'
 import request from '../../../../../utils/request'
 import { getProjectDict } from '@/api/project-dict'
-import { getDepartmentProjects } from '@/api/department'
+import { getProjectDict } from '@/api/department'
 import { useUserStore } from '@/store/modules/user'
 
 export function useProjectDict() {
@@ -18,7 +18,7 @@ export function useProjectDict() {
       
       let projects: string[] = []
       if (deptId) {
-        const projectRes = await getDepartmentProjects(deptId)
+        const projectRes = await getProjectDict(deptId)
         if (projectRes.code === 200) {
           projects = projectRes.data
         }

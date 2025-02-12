@@ -3,7 +3,8 @@ export interface Role {
   id: number
   name: string
   code: string
-  description: string
+  description?: string
+  permissions?: string[]
 }
 
 // 创建角色请求

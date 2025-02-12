@@ -59,21 +59,19 @@ export const useUserStore = defineStore("user", {
           this.token = token;
           setToken(token);
 
-          // 2. 获取用户信息（包含角色和权限）
+          // 2. 获取用户信息
           await this.getInfo();
 
           // 3. 生成动态路由
           const permissionStore = usePermissionStore();
           await permissionStore.generateRoutes();
 
-          // 设置路由已加载标志
-          this.isRoutesLoaded = true;
-
           return true;
         }
-        return false;
+        return Promise.reject(new Error(res.message));
       } catch (error) {
-        return false;
+        // 向上抛出错误，让组件处理具体的错误提示
+        return Promise.reject(error);
       }
     },
 

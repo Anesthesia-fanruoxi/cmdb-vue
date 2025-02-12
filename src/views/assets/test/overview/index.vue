@@ -53,7 +53,7 @@ import ProjectFilter from './components/ProjectFilter.vue'
 import StatusCards from './components/StatusCards.vue'
 import StatusTable from './components/StatusTable.vue'
 import IterationDialog from './components/IterationDialog.vue'
-import { getDepartmentProjects } from '@/api/department'
+import { getProjectDict } from '@/api/department'
 import { useUserStore } from '@/store/modules/user'
 
 const {
@@ -81,7 +81,7 @@ const handleRefresh = async () => {
     // 获取部门的项目列表
     let projects: string[] = []
     if (deptId) {
-      const projectRes = await getDepartmentProjects(deptId)
+      const projectRes = await getProjectDict(deptId)
       if (projectRes.code === 200) {
         projects = projectRes.data
       }
@@ -140,7 +140,7 @@ const getList = async () => {
     // 获取部门的项目列表
     let projects: string[] = []
     if (deptId) {
-      const projectRes = await getDepartmentProjects(deptId)
+      const projectRes = await getProjectDict(deptId)
       if (projectRes.code === 200) {
         projects = projectRes.data
       }

@@ -63,14 +63,16 @@
 import { ref, computed, watch } from 'vue'
 import * as ElementPlusIcons from '@element-plus/icons-vue'
 import { Search } from '@element-plus/icons-vue'
+import type { PropType } from 'vue'
 
-const props = defineProps<{
-  modelValue: string
-}>()
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: ''
+  }
+})
 
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
-}>()
+const emit = defineEmits(['update:modelValue', 'change'])
 
 const showDialog = ref(false)
 const currentIcon = ref(props.modelValue)
@@ -130,6 +132,7 @@ const filteredIcons = computed(() => {
 const handleSelect = (icon: string) => {
   currentIcon.value = icon
   emit('update:modelValue', icon)
+  emit('change', icon)
   showDialog.value = false
   searchText.value = ''
 }
@@ -141,6 +144,17 @@ watch(
     currentIcon.value = val
   }
 )
+
+// 处理搜索
+const handleSearch = (value: string) => {
+  searchText.value = value
+}
+
+defineExpose({
+  showDialog,
+  handleSearch,
+  handleSelect
+})
 </script>
 
 <style scoped>

@@ -1,78 +1,102 @@
 <template>
-  <div class="document-manage">
+  <div class="document-container">
     <!-- 搜索栏 -->
     <el-card class="search-card">
-      <el-form :inline="true" :model="searchForm">
-        <el-form-item label="文档标题">
-          <el-input v-model="searchForm.title" placeholder="请输入文档标题" />
-        </el-form-item>
-        <el-form-item label="文档分类">
-          <el-cascader
-            v-model="searchForm.category"
-            :options="categoryOptions"
-            :props="{ checkStrictly: true }"
-            placeholder="请选择文档分类"
+      <el-form :model="queryParams" ref="queryForm" :inline="true">
+        <el-form-item label="关键词">
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="请输入标题关键词"
             clearable
+            @keyup.enter="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="创建时间">
-          <el-date-picker
-            v-model="searchForm.timeRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-          />
+        <el-form-item label="项目" class="project-select">
+          <el-select 
+            v-model="queryParams.project_id" 
+            placeholder="请选择项目" 
+            clearable
+            style="width: 240px;"
+          >
+            <el-option
+              v-for="item in projectOptions"
+              :key="item.project"
+              :label="item.project_name"
+              :value="item.project"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="resetSearch">重置</el-button>
+          <el-button type="primary" @click="handleQuery">查询</el-button>
+          <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <el-button type="primary" @click="handleAdd">
-        <el-icon><Plus /></el-icon>新建文档
-      </el-button>
-      <el-button type="success" @click="handleImport">
-        <el-icon><Upload /></el-icon>导入文档
-      </el-button>
-      <el-button type="warning" :disabled="!selectedRows.length" @click="handleExport">
-        <el-icon><Download /></el-icon>导出文档
-      </el-button>
-      <el-button type="danger" :disabled="!selectedRows.length" @click="handleBatchDelete">
-        <el-icon><Delete /></el-icon>批量删除
-      </el-button>
-    </div>
-
     <!-- 文档列表 -->
-    <el-card>
-      <el-table 
-        :data="tableData" 
+    <el-card class="list-card">
+      <template #header>
+        <div class="card-header">
+          <span>文档列表</span>
+          <div class="header-actions">
+            <el-button type="primary" @click="handleImport">导入文档</el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新建文档
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loading"
+        :data="documentList"
         style="width: 100%"
-        @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="title" label="文档标题" min-width="200">
+        <el-table-column prop="title" label="标题" min-width="200">
           <template #default="{ row }">
             <el-link type="primary" @click="handleView(row)">{{ row.title }}</el-link>
           </template>
         </el-table-column>
-        <el-table-column prop="category" label="分类" width="180">
+        <el-table-column 
+          prop="project_name" 
+          label="所属项目" 
+          width="150"
+          :formatter="(row) => getProjectName(row.project_id)"
+        />
+        <el-table-column prop="creator_name" label="创建人" width="120" />
+        <el-table-column prop="updater_name" label="最后修改人" width="120" />
+        <el-table-column prop="version" label="版本" width="80" align="center" />
+        <el-table-column prop="updated_at" label="更新时间" width="180" />
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-tag>{{ getCategoryPath(row.category) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="author" label="作者" width="120" />
-        <el-table-column prop="updateTime" label="更新时间" width="180" />
-        <el-table-column prop="views" label="浏览量" width="100" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="success" @click="handleVersion(row)">版本</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button
+              type="primary"
+              link
+              @click="handleView(row)"
+            >
+              查看
+            </el-button>
+            <el-button
+              type="primary"
+              link
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              type="primary"
+              link
+              @click="handleHistory(row)"
+            >
+              历史
+            </el-button>
+            <el-button
+              type="danger"
+              link
+              @click="handleDelete(row)"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -80,10 +104,10 @@
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
-          :page-sizes="[10, 20, 50, 100]"
+          :page-sizes="[10, 20, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -91,518 +115,695 @@
       </div>
     </el-card>
 
-    <!-- 文档编辑弹窗 -->
+    <!-- 新建文档对话框 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="isEdit ? '编辑文档' : '新建文档'"
-      width="80%"
-      top="5vh"
-      :fullscreen="isFullscreen"
-      :before-close="handleClose"
+      v-model="createDialogVisible"
+      title="新建文档"
+      width="500px"
+      append-to-body
     >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="rules"
-        label-width="100px"
-      >
-        <el-form-item label="文档标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入文档标题" />
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px">
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="createForm.title" placeholder="请输入标题" />
         </el-form-item>
-        
-        <el-form-item label="文档分类" prop="category">
-          <el-cascader
-            v-model="formData.category"
-            :options="categoryOptions"
-            :props="{ checkStrictly: true }"
-            placeholder="请选择文档分类"
-          />
-        </el-form-item>
-        
-        <el-form-item label="文档内容" prop="content">
-          <div class="editor-toolbar">
-            <el-radio-group v-model="editorMode" size="small">
-              <el-radio-button label="markdown">Markdown</el-radio-button>
-              <el-radio-button label="preview">预览</el-radio-button>
-            </el-radio-group>
-            <el-button 
-              type="text" 
-              :icon="isFullscreen ? 'Close' : 'FullScreen'"
-              @click="toggleFullscreen"
-            >
-              {{ isFullscreen ? '退出全屏' : '全屏编辑' }}
-            </el-button>
-          </div>
-          <div class="editor-container">
-            <div v-show="editorMode === 'markdown'" class="markdown-editor">
-              <el-input
-                v-model="formData.content"
-                type="textarea"
-                :rows="20"
-                placeholder="请输入文档内容（支持Markdown格式）"
-              />
-            </div>
-            <div v-show="editorMode === 'preview'" class="markdown-preview markdown-body" v-html="previewContent" />
-          </div>
-        </el-form-item>
-        
-        <el-form-item label="标签" prop="tags">
-          <el-tag
-            v-for="tag in formData.tags"
-            :key="tag"
-            closable
-            :disable-transitions="false"
-            @close="handleRemoveTag(tag)"
+        <el-form-item label="项目" prop="project_id">
+          <el-select 
+            v-model="createForm.project_id" 
+            placeholder="请选择项目"
+            style="width: 100%;"
           >
-            {{ tag }}
-          </el-tag>
-          <el-input
-            v-if="inputVisible"
-            ref="tagInputRef"
-            v-model="inputValue"
-            class="tag-input"
-            size="small"
-            @keyup.enter="handleInputConfirm"
-            @blur="handleInputConfirm"
-          />
-          <el-button v-else class="button-new-tag" size="small" @click="showInput">
-            + 新增标签
-          </el-button>
+            <el-option
+              v-for="item in projectOptions"
+              :key="item.project"
+              :label="item.project_name"
+              :value="item.project"
+            />
+          </el-select>
         </el-form-item>
       </el-form>
-      
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="handleClose">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button @click="createDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleCreateSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>
 
-    <!-- 版本历史弹窗 -->
-    <el-dialog
-      v-model="versionDialogVisible"
-      title="版本历史"
-      width="800px"
-    >
-      <el-timeline>
-        <el-timeline-item
-          v-for="version in versionHistory"
-          :key="version.id"
-          :timestamp="version.createTime"
-          :type="version.id === currentVersion ? 'primary' : ''"
-        >
-          <h4>版本 {{ version.version }}</h4>
-          <p>{{ version.comment }}</p>
-          <div class="version-actions">
-            <el-button 
-              link 
-              type="primary" 
-              @click="handleViewVersion(version)"
-            >
-              查看
-            </el-button>
-            <el-button 
-              v-if="version.id !== currentVersion"
-              link 
-              type="warning" 
-              @click="handleRollback(version)"
-            >
-              回滚到此版本
-            </el-button>
-          </div>
-        </el-timeline-item>
-      </el-timeline>
-    </el-dialog>
+    <!-- 使用拆分后的组件 -->
+    <document-editor
+      v-model:visible="editDialogVisible"
+      :is-edit="true"
+      :project-options="projectOptions"
+      :initial-data="currentDoc"
+      @submit="handleEditSubmit"
+    />
+    
+    <document-import
+      v-model:visible="importDialogVisible"
+      :project-options="projectOptions"
+      @submit="handleImportSubmit"
+      ref="importRef"
+    />
+    
+    <document-history
+      v-model:visible="historyDialogVisible"
+      :version-list="versionList"
+      @view="handleViewVersion"
+      @restore="handleRestore"
+    />
+    
+    <document-preview
+      v-model:visible="previewDialogVisible"
+      :document="previewVersion"
+      @edit="handleEdit"
+      @history="handleHistory"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick } from 'vue'
-import { Plus, Upload, Download, Delete } from '@element-plus/icons-vue'
-import type { FormInstance, TagInputInstance } from 'element-plus'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import * as marked from 'marked'
-import 'github-markdown-css'
+import { parseMarkdown } from '@/utils/markdown'
+import type { FormInstance } from 'element-plus'
+import { useUserStore } from '@/store/modules/user'
+import { useProjectDict } from '@/composables/useProjectDict' // 使用 composable
+import {
+  getDocList,
+  getDocDetail,
+  createDoc,
+  updateDoc,
+  deleteDoc,
+  getDocumentVersions,
+  restoreVersion
+} from '@/api/knowledge'
+import { marked } from 'marked'
+import 'github-markdown-css/github-markdown.css'
+import DocumentEditor from './components/DocumentEditor.vue'
+import DocumentImport from './components/DocumentImport.vue'
+import DocumentHistory from './components/DocumentHistory.vue'
+import DocumentPreview from './components/DocumentPreview.vue'
 
-// 搜索表单
-const searchForm = reactive({
-  title: '',
-  category: [] as number[],
-  timeRange: [] as string[]
-})
+// 使用项目字典 composable
+const { projectList: projectOptions } = useProjectDict()
 
-// 表格数据
-const tableData = ref([
-  {
-    id: 1,
-    title: '服务器管理规范',
-    category: [1, 11],
-    author: '张三',
-    updateTime: '2024-01-10 12:00:00',
-    views: 128,
-    content: '# 服务器管理规范\n\n## 1. 服务器命名规范\n...',
-    tags: ['规范', '服务器']
-  },
-  {
-    id: 2,
-    title: '数据库备份指南',
-    category: [1, 12],
-    author: '李四',
-    updateTime: '2024-01-09 15:30:00',
-    views: 86,
-    content: '# 数据库备份指南\n\n## 1. 备份策略\n...',
-    tags: ['数据库', '运维']
-  }
-])
-
-// 分类选项
-const categoryOptions = [
-  {
-    value: 1,
-    label: '运维文档',
-    children: [
-      {
-        value: 11,
-        label: '服务器'
-      },
-      {
-        value: 12,
-        label: '数据库'
-      },
-      {
-        value: 13,
-        label: '网络'
-      }
-    ]
-  },
-  {
-    value: 2,
-    label: '开发文档',
-    children: [
-      {
-        value: 21,
-        label: '前端'
-      },
-      {
-        value: 22,
-        label: '后端'
-      }
-    ]
-  }
-]
-
-// 获取分类路径
-const getCategoryPath = (categoryIds: number[]) => {
-  const path: string[] = []
-  let options = categoryOptions
-  
-  categoryIds.forEach(id => {
-    const option = options.find(opt => opt.value === id)
-    if (option) {
-      path.push(option.label)
-      options = option.children || []
-    }
-  })
-  
-  return path.join(' / ')
+// 处理项目名称显示
+const getProjectName = (project_id: string) => {
+  const project = projectOptions.value.find(p => p.project === project_id)
+  return project ? project.project_name : project_id
 }
 
-// 分页相关
-const currentPage = ref(1)
-const pageSize = ref(10)
+// 查询参数
+const queryParams = reactive({
+  keyword: '',
+  project_id: undefined,
+  page: 1,
+  page_size: 10
+})
+
+// 列表数据
+const loading = ref(false)
+const documentList = ref([])
 const total = ref(0)
-const selectedRows = ref<any[]>([])
 
-// 编辑相关
-const dialogVisible = ref(false)
-const isEdit = ref(false)
-const formRef = ref<FormInstance>()
-const formData = reactive({
-  title: '',
-  category: [] as number[],
-  content: '',
-  tags: [] as string[]
-})
-
-// 表单校验规则
-const rules = {
-  title: [
-    { required: true, message: '请输入文档标题', trigger: 'blur' },
-    { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
-  ],
-  category: [
-    { required: true, message: '请选择文档分类', trigger: 'change' }
-  ],
-  content: [
-    { required: true, message: '请输入文档内容', trigger: 'blur' }
-  ]
-}
-
-// 编辑器相关
-const editorMode = ref('markdown')
-const isFullscreen = ref(false)
-const previewContent = computed(() => {
-  return marked.parse(formData.content)
-})
-
-// 标签相关
-const inputVisible = ref(false)
-const inputValue = ref('')
-const tagInputRef = ref<TagInputInstance>()
-
-// 版本相关
-const versionDialogVisible = ref(false)
-const currentVersion = ref(1)
-const versionHistory = [
-  {
-    id: 1,
-    version: '1.0.0',
-    createTime: '2024-01-10 12:00:00',
-    comment: '初始版本',
-    content: '# 服务器管理规范\n\n## 1. 服务器命名规范\n...'
-  },
-  {
-    id: 2,
-    version: '1.0.1',
-    createTime: '2024-01-10 14:30:00',
-    comment: '更新命名规范',
-    content: '# 服务器管理规范\n\n## 1. 服务器命名规范（更新）\n...'
+// 获取文档列表
+const getList = async () => {
+  try {
+    loading.value = true
+    const { data } = await getDocList(queryParams)
+    if (data) {
+      // 处理项目名称显示
+      documentList.value = data.list.map(item => ({
+        ...item,
+        project_name: getProjectName(item.project_id)
+      }))
+      total.value = data.total
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取文档列表失败')
+  } finally {
+    loading.value = false
   }
-]
-
-// 搜索
-const handleSearch = () => {
-  // TODO: 实现搜索逻辑
-  console.log('search:', searchForm)
-  currentPage.value = 1
-  fetchData()
 }
 
-// 重置搜索
-const resetSearch = () => {
-  searchForm.title = ''
-  searchForm.category = []
-  searchForm.timeRange = []
-  handleSearch()
+// 查询操作
+const handleQuery = () => {
+  queryParams.page = 1
+  getList()
+}
+
+const resetQuery = () => {
+  queryParams.keyword = ''
+  handleQuery()
+}
+
+// 分页操作
+const handleSizeChange = (val: number) => {
+  queryParams.page_size = val
+  getList()
+}
+
+const handleCurrentChange = (val: number) => {
+  queryParams.page = val
+  getList()
 }
 
 // 新建文档
-const handleAdd = () => {
-  isEdit.value = false
-  formData.title = ''
-  formData.category = []
-  formData.content = ''
-  formData.tags = []
-  dialogVisible.value = true
+const createDialogVisible = ref(false)
+const createFormRef = ref<FormInstance>()
+const createForm = reactive({
+  title: '',
+  project_id: undefined
+})
+
+const createRules = {
+  title: [
+    { required: true, message: '请输入标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
+  ],
+  project_id: [
+    { required: true, message: '请选择项目', trigger: 'change' }
+  ]
+}
+
+// 文档查看相关
+const previewDialogVisible = ref(false)
+const currentDoc = ref({
+  id: undefined,
+  title: '',
+  content: '',
+  creator_name: '',
+  updated_at: '',
+  version: 0,
+  project_id: ''
+})
+
+// 查看文档
+const handleView = async (row: any) => {
+  try {
+    const { data } = await getDocDetail(row.id)
+    if (data) {
+      // 直接将文档数据传给预览组件
+      previewVersion.value = {
+        id: data.id,
+        title: data.title,
+        content: data.content,
+        creator_name: data.creator_name,
+        updater_name: data.updater_name,
+        version: data.version,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      }
+      previewDialogVisible.value = true
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取文档详情失败')
+  }
 }
 
 // 编辑文档
-const handleEdit = (row: any) => {
-  isEdit.value = true
-  Object.assign(formData, row)
-  dialogVisible.value = true
+const editDialogVisible = ref(false)
+const formData = ref({
+  id: undefined,
+  title: '',
+  content: '',
+  project_id: '',
+  version: 1
+})
+const parsedEditContent = computed(() => parseMarkdown(formData.value.content))
+
+// 历史版本相关
+const historyDialogVisible = ref(false)
+const versionList = ref([])
+const previewVersion = ref<{
+  id: number
+  title: string
+  content: string
+  updater_name: string
+  created_at: string
+  version: number
+} | null>(null)
+const previewVersionContent = computed(() => 
+  previewVersion.value ? parseMarkdown(previewVersion.value.content) : ''
+)
+
+// 获取文档列表
+const handleAdd = () => {
+  if (projectOptions.value.length === 0) {
+    ElMessage.warning('您没有可用的项目，请先创建项目')
+    return
+  }
+  createForm.title = ''
+  createForm.project_id = undefined
+  createDialogVisible.value = true
 }
 
-// 查看文档
-const handleView = (row: any) => {
-  // TODO: 实现查看逻辑
-  console.log('view:', row)
-}
-
-// 删除文档
-const handleDelete = (row: any) => {
-  ElMessageBox.confirm('确认删除该文档？', '提示', {
-    type: 'warning'
-  }).then(() => {
-    // TODO: 实现删除逻辑
-    ElMessage.success('删除成功')
-    fetchData()
-  })
-}
-
-// 批量删除
-const handleBatchDelete = () => {
-  if (!selectedRows.value.length) return
-  ElMessageBox.confirm(`确认删除选中的 ${selectedRows.value.length} 个文档？`, '提示', {
-    type: 'warning'
-  }).then(() => {
-    // TODO: 实现批量删除逻辑
-    ElMessage.success('删除成功')
-    fetchData()
-  })
-}
-
-// 导入文档
-const handleImport = () => {
-  // TODO: 实现导入逻辑
-  console.log('import')
-}
-
-// 导出文档
-const handleExport = () => {
-  // TODO: 实现导出逻辑
-  console.log('export:', selectedRows.value)
-}
-
-// 切换全屏
-const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value
-}
-
-// 关闭弹窗
-const handleClose = () => {
-  ElMessageBox.confirm('确认关闭？未保存的内容将会丢失', '提示', {
-    type: 'warning'
-  }).then(() => {
-    dialogVisible.value = false
-  })
-}
-
-// 提交表单
-const handleSubmit = async () => {
-  if (!formRef.value) return
+const handleCreateSubmit = async () => {
+  if (!createFormRef.value) return
   
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      // TODO: 实现提交逻辑
-      console.log('submit:', formData)
-      ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-      dialogVisible.value = false
-      fetchData()
-    }
-  })
+  try {
+    await createFormRef.value.validate()
+    await createDoc(createForm)
+    ElMessage.success('创建成功')
+    createDialogVisible.value = false
+    getList()
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建失败')
+  }
 }
 
-// 显示标签输入框
-const showInput = () => {
-  inputVisible.value = true
-  nextTick(() => {
-    tagInputRef.value?.input?.focus()
-  })
+// 处理编辑提交
+const handleEditSubmit = async (formData: any) => {
+  try {
+    await updateDoc({
+      id: formData.id,
+      title: formData.title,
+      content: formData.content,
+      project_id: formData.project_id,
+      version: formData.version
+    })
+    ElMessage.success('保存成功')
+    editDialogVisible.value = false
+    getList()
+  } catch (error: any) {
+    ElMessage.error(error.message || '保存失败')
+  }
 }
 
-// 处理标签输入
-const handleInputConfirm = () => {
-  if (inputValue.value) {
-    if (!formData.tags.includes(inputValue.value)) {
-      formData.tags.push(inputValue.value)
+// 删除操作
+const handleDelete = async (row: any) => {
+  try {
+    await ElMessageBox.confirm('确认删除该文档?', '提示', {
+      type: 'warning'
+    })
+    await deleteDoc(row.id)
+    ElMessage.success('删除成功')
+    getList()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
     }
   }
-  inputVisible.value = false
-  inputValue.value = ''
 }
 
-// 移除标签
-const handleRemoveTag = (tag: string) => {
-  formData.tags = formData.tags.filter(t => t !== tag)
+// 历史版本操作
+const handleHistory = async (row: any) => {
+  try {
+    const { data } = await getDocumentVersions(row.id)
+    versionList.value = data
+    historyDialogVisible.value = true
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取历史版本失败')
+  }
 }
 
-// 查看版本历史
-const handleVersion = (row: any) => {
-  // TODO: 获取版本历史
-  versionDialogVisible.value = true
-}
-
-// 查看指定版本
+// 查看历史版本
 const handleViewVersion = (version: any) => {
-  // TODO: 实现版本查看逻辑
-  console.log('view version:', version)
+  previewVersion.value = version
+  historyDialogVisible.value = false
+  previewDialogVisible.value = true
 }
 
-// 回滚到指定版本
-const handleRollback = (version: any) => {
-  ElMessageBox.confirm('确认回滚到此版本？当前版本将会被保存为新版本', '提示', {
-    type: 'warning'
-  }).then(() => {
-    // TODO: 实现回滚逻辑
-    ElMessage.success('回滚成功')
-    versionDialogVisible.value = false
-  })
+// 历史版本恢复
+const handleRestore = async (version: any) => {
+  try {
+    await ElMessageBox.confirm('确认恢复到此版本?', '提示', {
+      type: 'warning'
+    })
+    
+    // 恢复历史版本时，同时保存当前版本到历史记录
+    await restoreVersion({
+      doc_id: currentDoc.value.id,
+      history_id: version.id,
+      current_version: {
+        title: currentDoc.value.title,
+        content: currentDoc.value.content,
+        project_id: currentDoc.value.project_id,
+        version: currentDoc.value.version
+      }
+    })
+    
+    ElMessage.success('恢复成功')
+    historyDialogVisible.value = false
+    getList()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '恢复失败')
+    }
+  }
 }
 
-// 表格选择变化
-const handleSelectionChange = (rows: any[]) => {
-  selectedRows.value = rows
+// 导入相关
+const importDialogVisible = ref(false)
+const importFormRef = ref<FormInstance>()
+const importForm = reactive({
+  title: '',
+  project_id: '',
+  file: null as File | null
+})
+
+const importRules = {
+  title: [
+    { required: true, message: '请输入标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
+  ],
+  project_id: [
+    { required: true, message: '请选择项目', trigger: 'change' }
+  ]
 }
 
-// 分页大小变化
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  fetchData()
+// 预览相关
+const previewHtml = computed(() => {
+  return marked(formData.value.content || '')
+})
+
+// 处理内容变化
+const handleContentChange = () => {
+  // 实时更新预览，不需要额外处理，computed 会自动更新
 }
 
-// 当前页变化
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  fetchData()
+// 处理文件选择
+const handleFileChange = (file: any) => {
+  if (!file.raw) {
+    ElMessage.error('请选择文件')
+    return
+  }
+  
+  importForm.file = file.raw
+  
+  // 如果标题为空，从文件名中提取标题（去掉.md后缀）
+  if (!importForm.title) {
+    const fileName = file.raw.name
+    if (fileName.toLowerCase().endsWith('.md')) {
+      importForm.title = fileName.slice(0, -3)
+    }
+  }
 }
 
-// 获取表格数据
-const fetchData = () => {
-  // TODO: 实现获取数据逻辑
-  total.value = tableData.value.length
+// 处理导入提交
+const handleImportSubmit = async (formData: any) => {
+  try {
+    await createDoc({
+      title: formData.title,
+      project_id: formData.project_id,
+      content: formData.content
+    })
+    
+    ElMessage.success('导入成功')
+    importDialogVisible.value = false
+    getList()
+  } catch (error: any) {
+    ElMessage.error(error.message || '导入失败')
+  }
 }
 
-// 初始化
-fetchData()
+// 处理导入按钮点击
+const handleImport = () => {
+  // 重置表单数据
+  importForm.title = ''
+  importForm.project_id = ''
+  importForm.file = null
+  
+  // 显示导入表单对话框
+  importDialogVisible.value = true
+}
+
+// 编辑文档
+const handleEdit = async (row: any) => {
+  try {
+    const { data } = await getDocDetail(row.id)
+    if (data) {
+      // 设置当前文档数据
+      currentDoc.value = {
+        id: data.id,
+        title: data.title,
+        content: data.content,
+        project_id: row.project_id, // 从列表数据中获取
+        version: data.version
+      }
+      editDialogVisible.value = true
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取文档详情失败')
+  }
+}
+
+onMounted(() => {
+  getList()
+})
 </script>
 
-<style scoped>
-.document-manage {
+<style lang="scss" scoped>
+.document-container {
+  padding: 20px;
+  
   .search-card {
     margin-bottom: 20px;
-  }
 
-  .action-bar {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 10px;
+    :deep(.el-form--inline) {
+      .el-form-item {
+        margin-right: 16px;
+        
+        &.project-select {
+          margin-right: 16px;
+          
+          .el-select {
+            width: 240px;
+          }
+        }
+      }
+    }
   }
+  
+  .list-card {
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
 
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        
+        :deep(.el-upload) {
+          margin-right: 12px;
+        }
+      }
+    }
+  }
+  
   .pagination-container {
     margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .editor-toolbar {
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    text-align: right;
   }
 
   .editor-container {
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-  }
-
-  .markdown-editor {
-    :deep(.el-textarea__inner) {
-      border: none;
-      border-radius: 0;
+    display: flex;
+    gap: 20px;
+    height: 60vh;
+    
+    .editor-left,
+    .editor-right {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      border: 1px solid var(--el-border-color-light);
+      border-radius: 4px;
+    }
+    
+    .editor-right {
+      background-color: #fafafa;
+      
+      .preview-header {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--el-border-color);
+      }
     }
   }
 
-  .markdown-preview {
-    padding: 20px;
-    min-height: 500px;
-    overflow-y: auto;
+  .dialog-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    .right-buttons {
+      display: flex;
+      gap: 12px;
+    }
   }
 
-  .tag-input {
-    width: 100px;
-    margin-left: 10px;
-    vertical-align: bottom;
+  :deep(.doc-preview-dialog) {
+    .el-dialog__header {
+      display: none;
+    }
+    
+    .el-dialog__body {
+      padding: 0;
+      background-color: #f5f7fa;
+    }
+
+    .markdown-body {
+      h1:first-child {
+        text-align: center !important;
+        margin: 0 0 1em !important;
+        padding-bottom: 0.5em;
+        border-bottom: 1px solid #ebeef5;
+      }
+    }
   }
 
-  .button-new-tag {
-    margin-left: 10px;
-  }
+  .doc-content {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 48px;
+    min-height: calc(100vh - 80px);
+    background-color: #fff;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    
+    .doc-header {
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #ebeef5;
+      text-align: center;
 
-  .version-actions {
-    margin-top: 8px;
+      .doc-title {
+        text-align: center !important;
+        font-size: 32px;
+        font-weight: 600;
+        margin: 0 auto 24px;
+        max-width: 80%;
+        color: #303133;
+        display: block;
+      }
+      
+      .doc-info {
+        color: #606266;
+        font-size: 14px;
+        line-height: 1.8;
+        padding-left: 2px;
+        text-align: left;
+        
+        .info-item {
+          margin-bottom: 8px;
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+    
+    .doc-body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0;
+      color: #2c3e50;
+      line-height: 1.6;
+      
+      :deep(h1, h2, h3, h4, h5, h6) {
+        margin-top: 1.5em;
+        margin-bottom: 1em;
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      
+      :deep(p) {
+        margin: 1em 0;
+        line-height: 1.8;
+      }
+      
+      :deep(code) {
+        background-color: #f8f9fa;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-size: 0.9em;
+        color: #476582;
+      }
+      
+      :deep(pre) {
+        margin: 1em 0;
+        padding: 1em;
+        background-color: #282c34;
+        border-radius: 6px;
+        overflow: auto;
+        
+        code {
+          background-color: transparent;
+          padding: 0;
+          color: #abb2bf;
+        }
+      }
+      
+      :deep(blockquote) {
+        margin: 1em 0;
+        padding: 0.5em 1em;
+        color: #666;
+        background-color: #f8f9fa;
+        border-left: 4px solid #42b983;
+      }
+      
+      :deep(img) {
+        max-width: 100%;
+        border-radius: 4px;
+        box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+      }
+      
+      :deep(table) {
+        width: 100%;
+        margin: 1em 0;
+        border-collapse: collapse;
+        
+        th, td {
+          padding: 0.75em;
+          border: 1px solid #dcdfe6;
+        }
+        
+        th {
+          background-color: #f8f9fa;
+          font-weight: 600;
+        }
+      }
+    }
   }
+}
+
+:deep(.markdown-body) {
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  
+  pre {
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+  }
+  
+  code {
+    background-color: rgba(27,31,35,0.05);
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-size: 85%;
+  }
+}
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+:deep(.el-upload__tip) {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 </style> 

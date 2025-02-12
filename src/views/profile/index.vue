@@ -89,7 +89,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import type { FormInstance } from 'element-plus'
-import { getUserInfo, updateUser } from '@/api/user'
+import { getUserInfo, updateUser, updateProfile } from '@/api/user'
 import type { UserInfo, UpdateUserParams } from '@/api/user'
 import { useUserStore } from '@/store/modules/user'
 import ProfilePasswordFields from './components/ProfilePasswordFields.vue'
@@ -224,9 +224,7 @@ const handleSubmit = async () => {
     submitLoading.value = true
     
     // 只收集修改过的字段
-    const updateData: UpdateUserParams = {
-      id: userInfo.value.id
-    }
+    const updateData: UpdateUserParams = {}
     
     // 比较每个字段，只添加修改过的
     if (formData.nickname !== originalFormData.value.nickname) {
@@ -240,17 +238,17 @@ const handleSubmit = async () => {
     }
     
     // 如果没有任何修改，直接返回
-    if (Object.keys(updateData).length === 1) {
+    if (Object.keys(updateData).length === 0) {
       ElMessage.info('没有任何修改')
       return
     }
     
-    console.log('更新用户信息请求数据:', updateData)
-    await updateUser(updateData)
+    console.log('更新个人信息请求数据:', updateData)
+    await updateProfile(updateData)
     ElMessage.success('更新成功')
-    await getUserData()
+    await getUserData() // 重新获取用户信息
   } catch (error: any) {
-    console.error('更新用户信息失败:', error)
+    console.error('更新个人信息失败:', error)
     ElMessage.error(error.message || '更新失败')
   } finally {
     submitLoading.value = false
@@ -284,7 +282,7 @@ const handlePasswordSubmit = async () => {
       password: passwordForm.password
     }
     
-    await updateUser(updateData)
+    await updateProfile(updateData)
     ElMessage.success('密码修改成功，请重新登录')
     passwordDialogVisible.value = false
     await userStore.logout()

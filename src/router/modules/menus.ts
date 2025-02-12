@@ -6,6 +6,7 @@ export interface MenuItem {
   path: string
   name: string
   component?: any
+  redirect?: string
   meta: {
     title: string
     icon?: string
@@ -88,26 +89,6 @@ export const menus: MenuItem[] = [
     ]
   },
   {
-    path: '/monitor',
-    name: 'Monitor',
-    component: Layout,
-    meta: { title: '监控中心', icon: 'DataLine' },
-    children: [
-      {
-        path: 'overview',
-        name: 'MonitorOverview',
-        component: () => import('@/views/monitor/overview/index.vue'),
-        meta: { title: '监控总览' }
-      },
-      {
-        path: 'alarm',
-        name: 'MonitorAlarm',
-        component: () => import('@/views/monitor/alarm/index.vue'),
-        meta: { title: '告警管理' }
-      }
-    ]
-  },
-  {
     path: '/knowledge',
     name: 'Knowledge',
     component: Layout,
@@ -153,4 +134,24 @@ export const menus: MenuItem[] = [
       }
     ]
   }
+]
+
+// 删除监控相关的菜单配置
+export const asyncMenus: MenuItem[] = [
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Layout,
+    redirect: '/dashboard/index',
+    meta: { title: '仪表盘', icon: 'Odometer' },
+    children: [
+      {
+        path: 'index',
+        name: 'DashboardIndex',
+        component: () => import('@/views/dashboard/index.vue'),
+        meta: { title: '仪表盘' }
+      }
+    ]
+  },
+  // ... 其他异步菜单
 ] 
