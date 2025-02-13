@@ -22,9 +22,12 @@ export const usePermissionStore = defineStore('permission', {
           throw new Error('获取菜单数据失败')
         }
 
-        const accessRoutes = this.filterAsyncRoutes(data)
+        // 过滤掉 wiki 菜单
+        const filteredData = this.filterWikiMenu(data)
+        
+        const accessRoutes = this.filterAsyncRoutes(filteredData)
         this.routes = accessRoutes
-        this.menuList = data
+        this.menuList = filteredData
         return accessRoutes
       } catch (error) {
         console.error('获取菜单失败:', error)
@@ -33,6 +36,21 @@ export const usePermissionStore = defineStore('permission', {
       } finally {
         this.loading = false
       }
+    },
+
+    // 添加过滤 wiki 菜单的方法
+    filterWikiMenu(menus: any[]) {
+      return menus.map(menu => {
+        if (menu.children) {
+          // 过滤掉 path 包含 'wiki' 的子菜单
+          menu.children = menu.children.filter(child => !child.path.includes('wiki'))
+          // 如果还有子菜单，继续递归过滤
+          if (menu.children.length > 0) {
+            menu.children = this.filterWikiMenu(menu.children)
+          }
+        }
+        return menu
+      })
     },
 
     // 其他代码保持不变...

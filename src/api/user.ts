@@ -89,6 +89,11 @@ export interface LoginParams {
   password: string
 }
 
+// 添加 User 接口定义
+export interface User extends UserInfo {
+  // 继承 UserInfo 的所有字段
+}
+
 // 登录
 export function login(data: LoginParams) {
   return request<{ token: string }>({

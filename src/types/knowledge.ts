@@ -63,4 +63,26 @@ export interface UpdateDocumentParams {
   content: string
   category_id: number
   tag_ids: number[]
+}
+
+export interface RecycleDocument {
+  id: number
+  doc_id: number
+  title: string
+  content: string
+  project_id: string
+  deleter_id: number
+  deleted_at: string
+  deleter: {
+    id: number
+    CreatedAt: string
+    UpdatedAt: string
+    Username: string
+    Nickname: string
+    Email: string
+    Phone: string
+    RoleID: number
+    IsEnabled: boolean
+    dept_id: number
+  }
 } 

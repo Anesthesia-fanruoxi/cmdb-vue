@@ -1,8 +1,23 @@
 import { marked } from 'marked'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
+
+// 配置 marked
+marked.setOptions({
+  highlight: function(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value
+    }
+    return hljs.highlightAuto(code).value
+  },
+  breaks: true,
+  gfm: true
+})
 
 // Markdown 转 HTML
 export const parseMarkdown = (content: string): string => {
-  return marked(content) // 使用 marked() 而不是 marked.parse()
+  if (!content) return ''
+  return marked(content)
 }
 
 // 配置 marked 选项

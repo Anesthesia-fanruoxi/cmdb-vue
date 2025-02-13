@@ -100,12 +100,6 @@ export const menus: MenuItem[] = [
         component: () => import('@/views/knowledge/document/index.vue'),
         meta: { title: '文档管理' }
       },
-      {
-        path: 'wiki',
-        name: 'Wiki',
-        component: () => import('@/views/knowledge/wiki/index.vue'),
-        meta: { title: 'Wiki 管理' }
-      }
     ]
   },
   {

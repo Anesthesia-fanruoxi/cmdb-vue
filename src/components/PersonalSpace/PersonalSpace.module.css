@@ -1,0 +1,53 @@
+.container {
+  height: 100%;
+  background: #fff;
+}
+
+.sider {
+  border-right: 1px solid #f0f0f0;
+  overflow-y: auto;
+}
+
+.siderTitle {
+  padding: 16px;
+  margin: 0 !important;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.docItem {
+  padding: 12px 16px !important;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.docItem:hover {
+  background: #f5f5f5;
+}
+
+.selected {
+  background: #e6f7ff;
+}
+
+.content {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.docContent {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.docBody {
+  margin-top: 16px;
+  line-height: 1.6;
+}
+
+.placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #999;
+  font-size: 16px;
+} 

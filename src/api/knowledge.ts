@@ -7,7 +7,8 @@ import type {
   DocumentVersion,
   DocumentQueryParams,
   CreateDocumentParams,
-  UpdateDocumentParams
+  UpdateDocumentParams,
+  RecycleDocument
 } from '@/types/knowledge'
 
 // 文档相关接口
@@ -121,5 +122,59 @@ export function restoreVersion(data: {
     url: '/knowledge/doc/restore',
     method: 'post',
     data
+  })
+}
+
+// 获取回收站列表
+export function getRecycleList(params: {
+  project: number
+  keyword?: string
+  page?: number
+  page_size?: number
+  startTime?: string
+  endTime?: string
+}) {
+  return request<ApiResponse<{
+    total: number
+    list: RecycleDocument[]
+  }>>({
+    url: '/knowledge/recycle/list',
+    method: 'get',
+  })
+}
+
+// 恢复文档
+export function restoreDocument(data: { id: number; project_id?: number }) {
+  return request({
+    url: '/knowledge/recycle/refresh',
+    method: 'post',
+    data
+  })
+}
+
+// 彻底删除文档
+export function removeDocument(id: number) {
+  return request({
+    url: '/knowledge/recycle/remove',
+    method: 'post',
+    data: { id }
+  })
+}
+
+// 批量恢复
+export function batchRestore(data: { ids: number[]; project_id?: number }) {
+  return request({
+    url: '/knowledge/recycle/batch-refresh',
+    method: 'post',
+    data
+  })
+}
+
+// 批量删除
+export function batchRemove(ids: number[]) {
+  return request({
+    url: '/knowledge/recycle/batch-remove',
+    method: 'post',
+    data: { ids }
   })
 } 

@@ -2,6 +2,13 @@ import request from "@/utils/request";
 import type { Role } from "@/types";
 import type { ApiResponse } from "@/api/menu";
 
+// 确保在 role.ts 中导出 Role 接口
+export interface Role {
+  id: number
+  name: string
+  code: string
+}
+
 // 获取角色列表
 export function getRoleList(params?: {
   keyword?: string;
@@ -28,20 +35,33 @@ export function createRole(data: {
 }
 
 // 更新角色
-export function updateRole(data: {
-  id: number;
-  name: string;
-  code: string;
-  description?: string;
-}) {
-  return request.put<ApiResponse<Role>>(`/system/role/${data.id}`, data);
+export function updateRole(data:
+  {
+    id: number;
+    name: string;
+    code: string;
+    description?: string;
+  }) {
+  return request<{
+    code: number
+    data: null
+  }>({
+    url: `/system/role/update`,
+    method: 'post',
+    data: data
+  })
 }
-
 // 删除角色
 export function deleteRole(id: number) {
-  return request.delete<ApiResponse<null>>(`/system/role/${id}`);
+  return request<{
+    code: number
+    data: null
+  }>({
+    url: `/system/role/delete`,
+    method: 'post',
+    data: { id: id }
+  })
 }
-
 // 获取角色权限
 export function getRolePermissions(id: number) {
   return request({
